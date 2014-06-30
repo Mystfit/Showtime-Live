@@ -20,12 +20,12 @@ from _Framework.ControlSurface import ControlSurface
 from _Framework.EncoderElement import EncoderElement
 
 # Import custom live objects
-from LiveUtils import *
+from LiveBridge.LiveUtils import *
 from ControlSurfaceComponents import *
 from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
-from LiveWrappers import *
-from LiveSubscriber import LiveSubscriber
-from LivePublisher import LivePublisher
+from LiveBridge.LiveWrappers import *
+from LiveBridge.LiveSubscriber import LiveSubscriber
+from PyroBridge.PyroPublisher import PyroPublisher
 
 
 class FissureVR_Pyro(ControlSurface):
@@ -57,7 +57,7 @@ class FissureVR_Pyro(ControlSurface):
 
         # Create publisher
         #self.publisher = Pyro.core.getProxyForURI("PYRONAME://" + Pyro.constants.EVENTSERVER_NAME)
-        self.publisher = LivePublisher(self.log_message)
+        self.publisher = PyroPublisher(self.log_message)
         self.subscriber = LiveSubscriber(self.publisher, self.log_message)
 
     def disconnect(self):
@@ -95,8 +95,7 @@ class FissureVR_Pyro(ControlSurface):
         song = PyroSong(self.publisher)
         # self.log_message(song.dump_song_xml())
         self.subscriber.set_song(song)
-
-        self.clock = PyroEncoderElement( 0, 1, None, (0, 0, 1))
+        self.clock = PyroEncoderElement(0, 1)
         parameters = {}
         for trackindex in range(len(getTracks())):
             trackWrapper = PyroTrack(trackindex, self.publisher)
@@ -106,7 +105,7 @@ class FissureVR_Pyro(ControlSurface):
                 deviceWrapper = PyroDevice(trackindex, deviceindex, self.publisher)
                 trackWrapper.devices.append(deviceWrapper)
 
-                for parameterindex in range(len(getTrack(trackindex).devices[deviceindex].parameters)):                    
+                for parameterindex in range(len(getTrack(trackindex).devices[deviceindex].parameters)):
                     parameterWrapper = PyroDeviceParameter(trackindex, deviceindex, parameterindex, self.publisher)
                     parameters[(trackindex, deviceindex, parameterindex, 0)] = parameterWrapper
 
@@ -123,7 +122,7 @@ class FissureVR_Pyro(ControlSurface):
                 deviceWrapper = PyroDevice(sendindex, deviceindex, self.publisher, 1)
                 sendWrapper.devices.append(deviceWrapper)
 
-                for parameterindex in range(len(sendWrapper.get_reference().devices[deviceindex].parameters)):                    
+                for parameterindex in range(len(sendWrapper.get_reference().devices[deviceindex].parameters)):
                     parameterWrapper = PyroDeviceParameter(sendindex, deviceindex, parameterindex, self.publisher, 1)
                     parameters[(sendindex, deviceindex, parameterindex, 1)] = parameterWrapper
 

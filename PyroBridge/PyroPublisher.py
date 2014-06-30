@@ -1,9 +1,8 @@
 from Pyro.EventService.Clients import Publisher
 import Pyro.errors
-from LiveWrappers import *
 
 
-class LivePublisher(Publisher):
+class PyroPublisher(Publisher):
 
     def __init__(self, logger=None):
         Publisher.__init__(self)

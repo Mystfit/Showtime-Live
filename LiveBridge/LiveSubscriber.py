@@ -19,14 +19,14 @@ class LiveSubscriber(Subscriber):
         self.song = None
 
         subscribed = [
-            PyroTrack.FIRE_CLIP, 
+            PyroTrack.FIRE_CLIP,
             PyroDeviceParameter.SET_VALUE,
             PyroSong.GET_SONG_LAYOUT,
             PyroTrack.STOP_TRACK,
             PyroSendVolume.SET_SEND
         ]
 
-        subscribed = [INCOMING_PREFIX + method for method in subscribed] 
+        subscribed = [INCOMING_PREFIX + method for method in subscribed]
         self.log_message(subscribed)
         self.subscribe(subscribed)
 
@@ -80,7 +80,7 @@ class LiveSubscriber(Subscriber):
         self.log_message("Requesting song layout...")
         layout = self.song.get_song_layout(args)
         self.log_message(layout)
-        
+
     def fire_clip(self, args):
         try:
             launchClip(int(args["trackindex"]), int(args["clipindex"]))

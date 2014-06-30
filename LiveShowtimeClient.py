@@ -2,8 +2,8 @@ import sys
 import Pyro.util
 import Pyro.core
 from Pyro.errors import NamingError
-import PyroServerStarter
-from LiveRouter import LiveRouter
+import PyroBridge.PyroServerStarter
+from PyroBridge.ShowtimeRouter import ShowtimeRouter
 import rtmidi_python as rtmidi
 import threading
 import time
@@ -39,7 +39,7 @@ midi_out = rtmidi.MidiOut()
 midi_out.open_virtual_port("LiveShowtime_Midi")
 
 #Server startup
-PyroServerStarter.startServer()
+PyroBridge.PyroServerStarter.startServer()
 
 #Event listener
 Pyro.core.initClient()
@@ -49,7 +49,7 @@ clock = Clock(midi_out)
 clock.start()
 
 # Set up Pyro/Showtime router
-router = LiveRouter(sys.argv[1], midi_out)
+router = ShowtimeRouter(sys.argv[1], midi_out)
 
 # Enter into the idle loop to handle message
 try:

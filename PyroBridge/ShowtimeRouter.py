@@ -6,13 +6,12 @@ import sys
 sys.path.append("/Users/mystfit/Code/zmqshowtime/python")
 from zst_node import ZstNode
 from zst_method import ZstMethod
-from LiveWrappers import *
-from LivePublisher import LivePublisher
-import json
+from LiveBridge.LiveWrappers import *
+from PyroPublisher import PyroPublisher
 
 
 # Event listener class for recieving/parsing messages from Live
-class LiveRouter(Subscriber):
+class ShowtimeRouter(Subscriber):
 
     def __init__(self, stageaddress, midiPort):
         Subscriber.__init__(self)
@@ -28,12 +27,12 @@ class LiveRouter(Subscriber):
             PyroSendVolume.SEND_UPDATED
         ]
 
-        subscribed = [OUTGOING_PREFIX + method for method in subscribed] 
+        subscribed = [OUTGOING_PREFIX + method for method in subscribed]
         self.subscribe(subscribed)
 
         # uri = "PYRONAME://" + Pyro.constants.EVENTSERVER_NAME
         # self.publisher = Pyro.core.getProxyForURI(uri)
-        self.publisher = LivePublisher()
+        self.publisher = PyroPublisher()
 
         self.midi = midiPort
 
