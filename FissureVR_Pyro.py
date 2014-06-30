@@ -20,12 +20,13 @@ from _Framework.ControlSurface import ControlSurface
 from _Framework.EncoderElement import EncoderElement
 
 # Import custom live objects
-from LiveBridge.LiveUtils import *
 from ControlSurfaceComponents import *
 from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
-from LiveBridge.LiveWrappers import *
 from LiveBridge.LiveSubscriber import LiveSubscriber
 from PyroBridge.PyroPublisher import PyroPublisher
+
+from LiveBridge.LiveWrappers.PyroSong import PyroSong
+from LiveBridge.LiveWrappers.LiveUtils import *
 
 
 class FissureVR_Pyro(ControlSurface):
@@ -36,8 +37,8 @@ class FissureVR_Pyro(ControlSurface):
             self.cInstance = c_instance
             self._suppress_send_midi = True
 
-            debug_log(self, "--------------------------")
-            debug_log(self, "FissureVR Pyro DEBUG_START")
+            self.log_message(self, "--------------------------")
+            self.log_message(self, "FissureVR Pyro DEBUG_START")
 
             # Wrappers for Ableton objects
             self.song = None
@@ -46,7 +47,18 @@ class FissureVR_Pyro(ControlSurface):
             self.clock = None
 
             self.initPyroServer()
-            self.build_wrappers()
+            self.songWrapper = PyroSong(self.publisher, self.log_message)
+            self.subscriber.set_song(self.songWrapper)
+
+            for action, callback in self.songWrapper.incomingActions.iteritems():
+                self.log_message("Adding " + str(action) + " to incoming callbacks")
+                self.subscriber.add_incoming_action(action, callback)
+
+            # Midi clock to trigger incoming message check
+            self.clock = PyroEncoderElement(0, 1)
+            self.songWrapper.build_wrappers()
+
+            self.refresh_state()
             self._suppress_send_midi = False
 
     def initPyroServer(self):
@@ -88,43 +100,3 @@ class FissureVR_Pyro(ControlSurface):
 
     def requestLoop(self):
         self.subscriber.handle_requests()
-
-    def build_wrappers(self):
-        debug_log(self, "Creating Live/Pyro wrappers")
-
-        song = PyroSong(self.publisher)
-        # self.log_message(song.dump_song_xml())
-        self.subscriber.set_song(song)
-        self.clock = PyroEncoderElement(0, 1)
-        parameters = {}
-        for trackindex in range(len(getTracks())):
-            trackWrapper = PyroTrack(trackindex, self.publisher)
-            self.tracks.append(trackWrapper)
-
-            for deviceindex in range(len(getTrack(trackindex).devices)):
-                deviceWrapper = PyroDevice(trackindex, deviceindex, self.publisher)
-                trackWrapper.devices.append(deviceWrapper)
-
-                for parameterindex in range(len(getTrack(trackindex).devices[deviceindex].parameters)):
-                    parameterWrapper = PyroDeviceParameter(trackindex, deviceindex, parameterindex, self.publisher)
-                    parameters[(trackindex, deviceindex, parameterindex, 0)] = parameterWrapper
-
-            sendlist = trackWrapper.get_reference().mixer_device.sends
-            for send in range(len(sendlist)):
-                sendParamWrapper = PyroSendVolume(trackindex, send, self.publisher)
-                trackWrapper.sends.append(sendParamWrapper)
-
-        for sendindex in range(len(getSong().return_tracks)):
-            sendWrapper = PyroSend(sendindex, self.publisher)
-            self.sends.append(sendWrapper)
-
-            for deviceindex in range(len(sendWrapper.get_reference().devices)):
-                deviceWrapper = PyroDevice(sendindex, deviceindex, self.publisher, 1)
-                sendWrapper.devices.append(deviceWrapper)
-
-                for parameterindex in range(len(sendWrapper.get_reference().devices[deviceindex].parameters)):
-                    parameterWrapper = PyroDeviceParameter(sendindex, deviceindex, parameterindex, self.publisher, 1)
-                    parameters[(sendindex, deviceindex, parameterindex, 1)] = parameterWrapper
-
-        self.subscriber.set_parameter_list(parameters)
-        self.refresh_state()

@@ -6,8 +6,17 @@ import sys
 sys.path.append("/Users/mystfit/Code/zmqshowtime/python")
 from zst_node import ZstNode
 from zst_method import ZstMethod
-from LiveBridge.LiveWrappers import *
+
+from LiveBridge.LiveWrappers.PyroTrack import PyroTrackActions
+from LiveBridge.LiveWrappers.PyroDevice import PyroDeviceActions
+from LiveBridge.LiveWrappers.PyroDeviceParameter import PyroDeviceParameterActions
+from LiveBridge.LiveWrappers.PyroSong import PyroSongActions
+from LiveBridge.LiveWrappers.PyroSend import PyroSendActions
+from LiveBridge.LiveWrappers.PyroSendVolume import PyroSendVolumeActions
+
 from PyroPublisher import PyroPublisher
+
+import PyroShared
 
 
 # Event listener class for recieving/parsing messages from Live
@@ -17,23 +26,7 @@ class ShowtimeRouter(Subscriber):
         Subscriber.__init__(self)
         self.setThreading(True)
 
-        # Methods for Pyro to subscribe to
-        subscribed = [
-            PyroTrack.FIRED_SLOT_INDEX,
-            PyroTrack.PLAYING_SLOT_INDEX,
-            PyroDevice.PARAMETERS_UPDATED,
-            PyroDeviceParameter.VALUE_UPDATED,
-            PyroSong.GET_SONG_LAYOUT,
-            PyroSendVolume.SEND_UPDATED
-        ]
-
-        subscribed = [OUTGOING_PREFIX + method for method in subscribed]
-        self.subscribe(subscribed)
-
-        # uri = "PYRONAME://" + Pyro.constants.EVENTSERVER_NAME
-        # self.publisher = Pyro.core.getProxyForURI(uri)
         self.publisher = PyroPublisher()
-
         self.midi = midiPort
 
         # Create showtime node
@@ -47,16 +40,35 @@ class ShowtimeRouter(Subscriber):
         self.getDaemon().shutdown(True)
 
     def register_methods(self):
-        # Outgoing methods
-        self.node.request_register_method(PyroTrack.FIRED_SLOT_INDEX, ZstMethod.READ)
-        self.node.request_register_method(PyroTrack.PLAYING_SLOT_INDEX, ZstMethod.READ)
-        self.node.request_register_method(PyroDeviceParameter.VALUE_UPDATED, ZstMethod.READ)
-        self.node.request_register_method(PyroDevice.PARAMETERS_UPDATED, ZstMethod.READ)
-        self.node.request_register_method(PyroSendVolume.SEND_UPDATED, ZstMethod.READ)
+        # Register outgoing Showtime actions
+        self.node.request_register_method(
+            PyroTrackActions.FIRED_SLOT_INDEX, ZstMethod.READ)
+        self.node.request_register_method(
+            PyroTrackActions.PLAYING_SLOT_INDEX, ZstMethod.READ)
+        self.node.request_register_method(
+            PyroDeviceParameterActions.VALUE_UPDATED, ZstMethod.READ)
+        self.node.request_register_method(
+            PyroDeviceActions.PARAMETERS_UPDATED, ZstMethod.READ)
+        self.node.request_register_method(
+            PyroSendVolumeActions.SEND_UPDATED, ZstMethod.READ)
+
+        # Register outgoing Pyro actions
+        outgoingActions = [
+            PyroTrackActions.FIRED_SLOT_INDEX,
+            PyroTrackActions.PLAYING_SLOT_INDEX,
+            PyroDeviceActions.PARAMETERS_UPDATED,
+            PyroDeviceParameterActions.VALUE_UPDATED,
+            PyroSongActions.GET_SONG_LAYOUT,
+            PyroSendVolumeActions.SEND_UPDATED
+        ]
+
+        subscribed = [
+            PyroShared.OUTGOING_PREFIX + method for method in outgoingActions]
+        self.subscribe(subscribed)
 
         # Incoming methods
         self.node.request_register_method(
-            PyroTrack.FIRE_CLIP,
+            PyroSongActions.FIRE_CLIP,
             ZstMethod.WRITE,
             {
                 "trackindex": None,
@@ -65,7 +77,7 @@ class ShowtimeRouter(Subscriber):
             self.incoming)
 
         self.node.request_register_method(
-            PyroTrack.STOP_TRACK,
+            PyroSongActions.STOP_TRACK,
             ZstMethod.WRITE,
             {
                 "trackindex": None
@@ -73,7 +85,7 @@ class ShowtimeRouter(Subscriber):
             self.incoming)
 
         self.node.request_register_method(
-            PyroDeviceParameter.SET_VALUE,
+            PyroSongActions.SET_VALUE,
             ZstMethod.WRITE,
             {
                 "trackindex": None,
@@ -85,7 +97,7 @@ class ShowtimeRouter(Subscriber):
             self.incoming)
 
         self.node.request_register_method(
-            PyroSendVolume.SET_SEND,
+            PyroSongActions.SET_SEND,
             ZstMethod.WRITE,
             {
                 "trackindex": None,
@@ -95,7 +107,7 @@ class ShowtimeRouter(Subscriber):
             self.incoming)
 
         self.node.request_register_method(
-            PyroSong.GET_SONG_LAYOUT,
+            PyroSongActions.GET_SONG_LAYOUT,
             ZstMethod.RESPONDER, None,
             self.incoming, None)
 
@@ -112,7 +124,7 @@ class ShowtimeRouter(Subscriber):
 
     def event(self, event):
         print "IN-->OUT: " + event.subject, '=', event.msg
-        subject = event.subject[len(OUTGOING_PREFIX):]
+        subject = event.subject[len(PyroShared.OUTGOING_PREFIX):]
         if subject in self.node.methods:
             self.node.update_local_method_by_name(subject, event.msg)
         else:
@@ -121,8 +133,11 @@ class ShowtimeRouter(Subscriber):
     def incoming(self, message):
         print "Publishing message " + message.name
         args = message.args if message.args else {}
-        self.publisher.publish_check(INCOMING_PREFIX + message.name, args)
+        self.publisher.publish_check(
+            PyroShared.INCOMING_PREFIX + message.name, args)
 
+    # Incoming actions
+    # ----------------
     def play_midi_note(self, message):
         if int(message.args["state"]):
             self.midi.send_message(

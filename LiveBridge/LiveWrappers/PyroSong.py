@@ -1,36 +1,115 @@
-try:
-    from LiveUtils import *
-except ImportError:
-    print "Couldn't import LiveUtils!"
-
-import Pyro.errors
-
-INCOMING_PREFIX = "I_"
-OUTGOING_PREFIX = "O_"
+from PyroWrappers import *
+from PyroTrack import PyroTrack
+from PyroDevice import PyroDevice
+from PyroDeviceParameter import PyroDeviceParameter
+from PyroSend import PyroSend
+from PyroSendVolume import PyroSendVolume
 
 
-class PyroWrapper():
-    def __init__(self, publisher):
-        self.publisher = publisher
-        self.ref_wrapper = None
-
-    def get_reference(self):
-        return self.ref_wrapper()
+class PyroSongActions:
+    # Incoming
+    FIRE_CLIP = "fire_clip"
+    SET_VALUE = "set_value"
+    GET_SONG_LAYOUT = "get_song_layout"
+    STOP_TRACK = "stop_track"
+    SET_SEND = "set_send"
 
 
 class PyroSong(PyroWrapper):
-
-    # Out
-    GET_SONG_LAYOUT = "get_song_layout"
-
-    def __init__(self, publisher):
+    def __init__(self, publisher, logger):
         PyroWrapper.__init__(self, publisher=publisher)
+        self.log_message = logger
         self.ignoreList = []
-        self.ref_wrapper = getSong
+        self.ref_wrapper = self.get_song
+        self.parameters = {}
+        self.tracks = []
+        self.returns = []
+        self.valueChangedMessages = {}
 
+        self.incomingActions[PyroSongActions.SET_VALUE] = self.set_value
+        self.incomingActions[PyroSongActions.GET_SONG_LAYOUT] = self.get_song_layout
+        self.incomingActions[PyroSongActions.FIRE_CLIP] = self.fire_clip
+        self.incomingActions[PyroSongActions.STOP_TRACK] = self.stop_track
+        self.incomingActions[PyroSongActions.SET_SEND] = self.set_send
+
+    def get_song(self):
+        return getSong()
+
+    def build_wrappers(self):
+        for trackindex in range(len(getTracks())):
+            trackWrapper = PyroTrack(trackindex, self.publisher)
+            self.tracks.append(trackWrapper)
+
+            for deviceindex in range(len(getTrack(trackindex).devices)):
+                deviceWrapper = PyroDevice(trackindex, deviceindex, self.publisher)
+                trackWrapper.devices.append(deviceWrapper)
+
+                for parameterindex in range(len(getTrack(trackindex).devices[deviceindex].parameters)):
+                    parameterWrapper = PyroDeviceParameter(trackindex, deviceindex, parameterindex, self.publisher)
+                    self.parameters[(trackindex, deviceindex, parameterindex, 0)] = parameterWrapper
+
+            sendlist = trackWrapper.get_reference().mixer_device.sends
+            for send in range(len(sendlist)):
+                sendParamWrapper = PyroSendVolume(trackindex, send, self.publisher)
+                trackWrapper.sends.append(sendParamWrapper)
+
+        for sendindex in range(len(getSong().return_tracks)):
+            sendWrapper = PyroSend(sendindex, self.publisher)
+            self.returns.append(sendWrapper)
+
+            for deviceindex in range(len(sendWrapper.get_reference().devices)):
+                deviceWrapper = PyroDevice(sendindex, deviceindex, self.publisher, 1)
+                sendWrapper.devices.append(deviceWrapper)
+
+                for parameterindex in range(len(sendWrapper.get_reference().devices[deviceindex].parameters)):
+                    parameterWrapper = PyroDeviceParameter(sendindex, deviceindex, parameterindex, self.publisher, 1)
+                    self.parameters[(sendindex, deviceindex, parameterindex, 1)] = parameterWrapper
+
+    def process_value_changed_messages(self):
+        if self.valueChangedMessages:
+            for parametertuple, value in self.valueChangedMessages.iteritems():
+                try:
+                    if parametertuple in self.parameters:
+                        self.parameters[parametertuple].get_reference().value = value
+                except RuntimeError, e:
+                    self.log_message(e)
+            self.valueChangedMessages = {}
+
+    # Incoming
+    # --------
+    def set_value(self, args):
+        key = (
+            int(args["trackindex"]),
+            int(args["deviceindex"]),
+            int(args["parameterindex"]),
+            int(args["category"]))
+
+        # Rather than setting the parameter value immediately,
+        # we combine similar value messages so only the most up to date
+        # message gets applied when the clock triggers our update
+        if not self.valueChangedMessages:
+            self.valueChangedMessages = {}
+        self.valueChangedMessages[key] = float(args["value"])
+
+    def fire_clip(self, args):
+        self.log_message(launchClip)
+        launchClip(int(args["trackindex"]), int(args["clipindex"]))
+        self.log_message("Clip not found! " + str(args["trackindex"]) + ", " + str(args["clipindex"]))
+
+    def stop_track(self, args):
+        self.log_message("Stopping track " + str(args["trackindex"]))
+        stopTrack(int(args["trackindex"]))
+        self.log_message("Stopped track")
+
+    def set_send(self, args):
+        self.log_message("Setting send value " + str(args["trackindex"]))
+        trackSend(int(args["trackindex"]), int(args["sendindex"]), float(args["value"]))
+
+    # Outgoing
+    # --------
     def get_song_layout(self, args=None):
         self.publisher.publish_check(
-            OUTGOING_PREFIX + PyroSong.GET_SONG_LAYOUT, self.dump_song_xml())
+            PyroShared.OUTGOING_PREFIX + PyroSongActions.GET_SONG_LAYOUT, self.dump_song_xml())
 
     def clips_to_json(self):
         return None
@@ -218,130 +297,3 @@ class PyroSong(PyroWrapper):
         xmlString += "</song>\n"
 
         return xmlString
-
-
-class PyroTrack(PyroWrapper):
-    # Out
-    FIRED_SLOT_INDEX = "fired_slot_index"
-    PLAYING_SLOT_INDEX = "playing_slot_index"
-
-    # In
-    FIRE_CLIP = "fire_clip"
-    STOP_TRACK = "stop_track"
-
-    def __init__(self, trackindex, publisher):
-        PyroWrapper.__init__(self, publisher=publisher)
-        self.trackindex = trackindex
-        self.devices = []
-        self.sends = []
-        self.ref_wrapper = self.get_track
-
-        # Listeners
-        self.get_reference().add_fired_slot_index_listener(self.fired_slot_index)
-        self.get_reference().add_playing_slot_index_listener(self.playing_slot_index)
-
-    def get_track(self):
-        return getSong().tracks[self.trackindex]
-
-    def fired_slot_index(self):
-        self.publisher.publish_check(OUTGOING_PREFIX + PyroTrack.FIRED_SLOT_INDEX, {
-            "trackindex": self.trackindex,
-            "slotindex": self.get_reference().fired_slot_index})
-
-    def playing_slot_index(self):
-        self.publisher.publish_check(OUTGOING_PREFIX + PyroTrack.PLAYING_SLOT_INDEX, {
-            "trackindex": self.trackindex,
-            "slotindex": self.get_reference().playing_slot_index})
-
-
-class PyroSend(PyroWrapper):
-    # Out
-    # In
-
-    def __init__(self, sendindex, publisher):
-        PyroWrapper.__init__(self, publisher=publisher)
-        self.sendindex = sendindex
-        self.publisher = publisher
-        self.devices = []
-        self.ref_wrapper = self.get_send
-
-    def get_send(self):
-        return getSong().return_tracks[self.sendindex]
-
-
-class PyroDevice(PyroWrapper):
-    # Out
-    PARAMETERS_UPDATED = "parameters_updated"
-
-    def __init__(self, trackindex, deviceindex, publisher, isSendDevice=False):
-        PyroWrapper.__init__(self, publisher=publisher)
-        self.trackindex = trackindex
-        self.deviceindex = deviceindex
-        self.parameters = []
-        self.isSendDevice = isSendDevice
-        self.ref_wrapper = self.get_device
-        self.get_reference().add_parameters_listener(self.parameters_updated)
-
-    def get_device(self):
-        if self.isSendDevice:
-            return getSong().return_tracks[self.trackindex].devices[self.deviceindex]
-        return getTrack(self.trackindex).devices[self.deviceindex]
-
-    def parameters_updated(self):
-        self.publisher.publish_check(OUTGOING_PREFIX + PyroDevice.PARAMETERS_UPDATED, {
-            "track": self.track.name,
-            "device": self.get_reference().name})
-
-
-class PyroDeviceParameter(PyroWrapper):
-    # Out
-    VALUE_UPDATED = "value_updated"
-
-    #In
-    SET_VALUE = "set_value"
-
-    def __init__(self, trackindex, deviceindex, parameterindex, publisher, isSendDeviceParameter=0):
-        PyroWrapper.__init__(self, publisher=publisher)
-        self.trackindex = trackindex
-        self.deviceindex = deviceindex
-        self.parameterindex = parameterindex
-        self.isSendDeviceParameter = isSendDeviceParameter
-        self.ref_wrapper = self.get_parameter
-        self.get_reference().add_value_listener(self.value_updated)
-
-    def get_parameter(self):
-        if self.isSendDeviceParameter:
-            return getSong().return_tracks[self.trackindex].devices[self.deviceindex].parameters[self.parameterindex]
-        return getTrack(self.trackindex).devices[self.deviceindex].parameters[self.parameterindex]
-
-    def value_updated(self):
-        self.publisher.publish_check(OUTGOING_PREFIX + PyroDeviceParameter.VALUE_UPDATED, {
-            "trackindex": self.trackindex,
-            "deviceindex": self.deviceindex,
-            "parameterindex": self.parameterindex,
-            "value": self.get_reference().value,
-            "category": self.isSendDeviceParameter})
-
-
-class PyroSendVolume(PyroWrapper):
-    #Out
-    SEND_UPDATED = "send_updated"
-
-    #In
-    SET_SEND = "set_send"
-
-    def __init__(self, trackindex, sendindex, publisher):
-        PyroWrapper.__init__(self, publisher=publisher)
-        self.trackindex = trackindex
-        self.sendindex = sendindex
-        self.ref_wrapper = self.get_send
-        self.get_reference().add_value_listener(self.send_updated)
-
-    def get_send(self):
-        return getTrack(self.trackindex).mixer_device.sends[self.sendindex]
-
-    def send_updated(self):
-        self.publisher.publish_check(OUTGOING_PREFIX + PyroSendVolume.SEND_UPDATED, {
-            "trackindex": self.trackindex,
-            "sendindex": self.sendindex,
-            "value": self.get_reference().value})
