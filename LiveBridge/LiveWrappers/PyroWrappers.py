@@ -10,7 +10,7 @@ except ImportError:
     print("Couldn't load LiveAPI")
 
 try:
-    from ... import PyroShared
+    from .. import PyroShared
 except:
     print("Couldn't import PyroShared")
 

@@ -2,7 +2,7 @@ from Pyro.EventService.Clients import Publisher
 import Pyro.errors
 
 
-class PyroPublisher(Publisher):
+class LivePublisher(Publisher):
 
     def __init__(self, logger=None):
         Publisher.__init__(self)

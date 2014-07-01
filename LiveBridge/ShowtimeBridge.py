@@ -22,14 +22,13 @@ from _Framework.EncoderElement import EncoderElement
 # Import custom live objects
 from ControlSurfaceComponents import *
 from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
-from LiveBridge.LiveSubscriber import LiveSubscriber
-from PyroBridge.PyroPublisher import PyroPublisher
+from LiveSubscriber import LiveSubscriber
+from LiveWrappers.PyroSong import PyroSong
+from LiveWrappers.LiveUtils import *
+from LivePublisher import LivePublisher
 
-from LiveBridge.LiveWrappers.PyroSong import PyroSong
-from LiveBridge.LiveWrappers.LiveUtils import *
 
-
-class FissureVR_Pyro(ControlSurface):
+class ShowtimeBridge(ControlSurface):
 
     def __init__(self, c_instance):
         ControlSurface.__init__(self, c_instance)
@@ -68,8 +67,7 @@ class FissureVR_Pyro(ControlSurface):
         Pyro.core.initClient()
 
         # Create publisher
-        #self.publisher = Pyro.core.getProxyForURI("PYRONAME://" + Pyro.constants.EVENTSERVER_NAME)
-        self.publisher = PyroPublisher(self.log_message)
+        self.publisher = LivePublisher(self.log_message)
         self.subscriber = LiveSubscriber(self.publisher, self.log_message)
 
     def disconnect(self):

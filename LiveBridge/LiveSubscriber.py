@@ -1,7 +1,6 @@
 from Pyro.EventService.Clients import Subscriber
 from LiveWrappers import *
-
-from .. import PyroShared
+import PyroShared
 
 
 # Event listener class for recieving/parsing messages from Live
