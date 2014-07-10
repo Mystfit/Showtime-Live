@@ -25,7 +25,7 @@ class Clock(threading.Thread):
         while not self.exitFlag:
             self.clockVal += 1
             self.clockVal = self.clockVal % 127
-            self.midi_out.send_message([0xB0, 1, self.clockVal])
+            self.midi_out.send_message([0xB0, 119, self.clockVal])
             time.sleep(0.001)
 
 
@@ -34,10 +34,21 @@ class MidiRouter:
     NOTE_ON = 0x90
     NOTE_OFF = 0x80
 
+    MIDI_LOOPBACK_PORT = 1
+
     def __init__(self):
-        # Midi startup
+        # Midi startup. Try creating a virtual port. Doesn't work on Windows
         self.midi_out = rtmidi.MidiOut()
-        self.midi_out.open_virtual_port("LiveShowtime_Midi")
+        if not self.midi_out.open_virtual_port("LiveShowtime_Midi"):
+            print "Opening virtual port failed. Trying midi loopback instead."
+            print "Available MidiOut ports: "
+            portindex = 0
+            for port in self.midi_out.ports:
+                print str(portindex) + ": " + str(port)
+                portindex += 1
+
+            self.midi_out.open_port(MidiRouter.MIDI_LOOPBACK_PORT)
+        print self.midi_out
 
         # Set up midi clock
         self.clock = Clock(self.midi_out)
