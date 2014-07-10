@@ -9,6 +9,7 @@ Installation
 ------------
 
 - Install [Showtime](https://github.com/Mystfit/Showtime) for Python.
+- Install [Pyro 3.16](https://pypi.python.org/pypi/Pyro)
 - Copy the contents of Midi_Remote_Scripts to your Remote scripts folder. Ableton have provided some [handy instructions here.](https://www.ableton.com/en/articles/install-third-party-remote-script/)
 - Create a Showtime stage. This is done by running the python/Showtime/zst_stage.py script from the Showtime library. (eg. "python zst_stage.py").
 - Run LiveShowtimeClient.py and give it the ip:port of the stage. (eg. "python LiveShowtimeClient.py 0.0.0.0:6000" if you're running the stage locally).
