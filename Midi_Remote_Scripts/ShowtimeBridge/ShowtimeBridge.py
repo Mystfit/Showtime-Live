@@ -56,7 +56,7 @@ class ShowtimeBridge(ControlSurface):
                 self.subscriber.add_incoming_action(action, callback)
 
             # Midi clock to trigger incoming message check
-            self.clock = PyroEncoderElement(0, 1)
+            self.clock = PyroEncoderElement(0, 119)
             self.songWrapper.build_wrappers()
 
             self.refresh_state()
