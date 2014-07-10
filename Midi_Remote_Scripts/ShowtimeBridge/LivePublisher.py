@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
+
 from Pyro.EventService.Clients import Publisher
 import Pyro.errors
 

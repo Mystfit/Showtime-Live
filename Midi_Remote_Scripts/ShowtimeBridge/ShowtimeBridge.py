@@ -2,9 +2,11 @@ from __future__ import with_statement
 
 # Append Pyro and missing standard python scripts to the path
 import sys
-sys.path.append("/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5")
-sys.path.append("/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/lib-dynload")
-sys.path.append("/Library/Python/2.5/site-packages")
+#sys.path.append("/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5")
+#sys.path.append("/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/lib-dynload")
+
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 
 import encodings
 
@@ -36,8 +38,8 @@ class ShowtimeBridge(ControlSurface):
             self.cInstance = c_instance
             self._suppress_send_midi = True
 
-            self.log_message(self, "--------------------------")
-            self.log_message(self, "FissureVR Pyro DEBUG_START")
+            self.log_message(self, "--------------------")
+            self.log_message(self, "ShowtimeBridge START")
 
             # Wrappers for Ableton objects
             self.song = None

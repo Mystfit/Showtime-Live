@@ -2,20 +2,22 @@ from Pyro.EventService.Clients import Subscriber
 import Pyro.core
 import Pyro.errors
 
+from Showtime.zst_node import ZstNode
+from Showtime.zst_method import ZstMethod
+
 import sys
-sys.path.append("../zmqshowtime/python")
-from zst_node import ZstNode
-from zst_method import ZstMethod
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "../Midi_Remote_Scripts"))
 
-from LiveBridge.LiveWrappers.PyroTrack import PyroTrackActions
-from LiveBridge.LiveWrappers.PyroDevice import PyroDeviceActions
-from LiveBridge.LiveWrappers.PyroDeviceParameter import PyroDeviceParameterActions
-from LiveBridge.LiveWrappers.PyroSong import PyroSongActions
-from LiveBridge.LiveWrappers.PyroSend import PyroSendActions
-from LiveBridge.LiveWrappers.PyroSendVolume import PyroSendVolumeActions
+from ShowtimeBridge.LiveWrappers.PyroTrack import PyroTrackActions
+from ShowtimeBridge.LiveWrappers.PyroDevice import PyroDeviceActions
+from ShowtimeBridge.LiveWrappers.PyroDeviceParameter import PyroDeviceParameterActions
+from ShowtimeBridge.LiveWrappers.PyroSong import PyroSongActions
+from ShowtimeBridge.LiveWrappers.PyroSend import PyroSendActions
+from ShowtimeBridge.LiveWrappers.PyroSendVolume import PyroSendVolumeActions
 
-from LiveBridge.LivePublisher import LivePublisher
-from LiveBridge import PyroShared
+from ShowtimeBridge.LivePublisher import LivePublisher
+from ShowtimeBridge import PyroShared
 import MidiRouter
 
 

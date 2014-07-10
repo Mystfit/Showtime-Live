@@ -7,7 +7,8 @@
 try:
     from LiveUtils import *
 except ImportError:
-    print("Couldn't load LiveAPI")
+    #print("Couldn't load LiveAPI")
+    pass
 
 try:
     from .. import PyroShared
