@@ -4,6 +4,7 @@ except ImportError:
     import rtmidi
 import threading
 import time
+import platform
 
 
 class Clock(threading.Thread):
@@ -39,8 +40,9 @@ class MidiRouter:
     def __init__(self):
         # Midi startup. Try creating a virtual port. Doesn't work on Windows
         self.midi_out = rtmidi.MidiOut()
-        if not self.midi_out.open_virtual_port("LiveShowtime_Midi"):
-            print "Opening virtual port failed. Trying midi loopback instead."
+
+        if platform.system == "Windows":
+            print "Can't open virtual midi port on windows. Trying midi loopback instead."
             print "Available MidiOut ports: "
             portindex = 0
             for port in self.midi_out.ports:
@@ -48,7 +50,8 @@ class MidiRouter:
                 portindex += 1
 
             self.midi_out.open_port(MidiRouter.MIDI_LOOPBACK_PORT)
-        print self.midi_out
+        else:
+            self.midi_out.open_virtual_port("LiveShowtime_Midi")
 
         # Set up midi clock
         self.clock = Clock(self.midi_out)
