@@ -40,8 +40,8 @@ class MidiRouter:
     def __init__(self):
         # Midi startup. Try creating a virtual port. Doesn't work on Windows
         self.midi_out = rtmidi.MidiOut()
-
-        if platform.system == "Windows":
+        
+        if platform.system() == "Windows":
             print "Can't open virtual midi port on windows. Trying midi loopback instead."
             print "Available MidiOut ports: "
             portindex = 0
