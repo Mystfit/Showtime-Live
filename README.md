@@ -19,31 +19,31 @@ Current exposed methods
 -----------------------
 
 *Outgoing*
- - fired_slot_index
- - playing_slot_index
- - send_updated
- - value_updated
+- fired_slot_index
+- playing_slot_index
+- send_updated
+- value_updated
 
 *Incoming*
- - fire_clip
- - - trackindex
- - - clipindex
- - play_note
- - - note
- - - trackindex
- - - velocity
- - - state (0 = note off, 1 = note on)
- - set_send
- - - sendindex
- - - trackindex
- - - value
- - set_value
- - - category (0 = normal track devices, 1 = return track devices)
- - - deviceindex
- - - parameterindex
- - - value
- - stop_track
- - - trackindex
+- fire_clip
+    * trackindex
+    * clipindex
+- play_note
+    * note
+    * trackindex
+    * velocity
+    * state (0 = note off, 1 = note on)
+- set_send
+    * sendindex
+    * trackindex
+    * value
+- set_value
+    * category (0 = normal track devices, 1 = return track devices)
+    * deviceindex
+    * parameterindex
+    * value
+- stop_track
+    * trackindex
 
 
 *Responders*
