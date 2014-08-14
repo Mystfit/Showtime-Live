@@ -6,11 +6,6 @@ from Pyro.errors import NamingError
 import PyroBridge.PyroServerStarter
 from PyroBridge.ShowtimeRouter import ShowtimeRouter
 
-
-if len(sys.argv) < 2:
-    print "Need a ZST stage address."
-    sys.exit(0)
-
 #Server startup
 PyroBridge.PyroServerStarter.startServer()
 
@@ -18,7 +13,10 @@ PyroBridge.PyroServerStarter.startServer()
 Pyro.core.initClient()
 
 # Set up Pyro/Showtime router
-showtimeRouter = ShowtimeRouter(sys.argv[1])
+stageAddress = None
+if(len(sys.argv) > 1):
+	stageAddress = sys.argv[1]
+showtimeRouter = ShowtimeRouter(stageAddress)
 
 # Enter into the idle loop to handle messages
 try:

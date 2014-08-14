@@ -31,6 +31,15 @@ class ShowtimeRouter(Subscriber):
         self.publisher = LivePublisher()
         self.midiRouter = MidiRouter.MidiRouter()
 
+        if not stageaddress:
+            print("Creating internal stage at tcp://127.0.0.1:6000")
+            self.stageNode = ZstNode("ShowtimeStage")
+            port = 6000
+            address = "tcp://*:" + str(port)
+            self.stageNode.reply.socket.bind(address)
+            self.stageNode.start()
+            stageaddress = "127.0.0.1:" + str(port)
+
         # Create showtime node
         self.node = ZstNode("LiveNode", stageaddress)
         self.node.start()
@@ -39,6 +48,8 @@ class ShowtimeRouter(Subscriber):
 
     def close(self):
         self.node.close()
+        if(hasAttr(self, "stageNode")):
+            self.stageNode.close()
         self.getDaemon().shutdown(True)
         self.midiRouter.close()
 
