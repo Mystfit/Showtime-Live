@@ -47,6 +47,10 @@ class ShowtimeRouter(Subscriber):
         self.node.request_register_method(
             PyroTrackActions.FIRED_SLOT_INDEX, ZstMethod.READ)
         self.node.request_register_method(
+            PyroTrackActions.OUTPUT_METER, ZstMethod.READ)
+        self.node.request_register_method(
+            PyroSongActions.METERS_UPDATED, ZstMethod.READ)
+        self.node.request_register_method(
             PyroTrackActions.PLAYING_SLOT_INDEX, ZstMethod.READ)
         self.node.request_register_method(
             PyroDeviceParameterActions.VALUE_UPDATED, ZstMethod.READ)
@@ -58,10 +62,13 @@ class ShowtimeRouter(Subscriber):
         # Register outgoing Pyro actions
         outgoingActions = [
             PyroTrackActions.FIRED_SLOT_INDEX,
+            PyroTrackActions.OUTPUT_METER,
             PyroTrackActions.PLAYING_SLOT_INDEX,
             PyroDeviceActions.PARAMETERS_UPDATED,
             PyroDeviceParameterActions.VALUE_UPDATED,
             PyroSongActions.GET_SONG_LAYOUT,
+            PyroSongActions.GET_TRACKS,
+            PyroSongActions.METERS_UPDATED,
             PyroSendVolumeActions.SEND_UPDATED
         ]
 
@@ -112,6 +119,11 @@ class ShowtimeRouter(Subscriber):
         self.node.request_register_method(
             PyroSongActions.GET_SONG_LAYOUT,
             ZstMethod.RESPONDER, None,
+            self.incoming, None)
+
+        self.node.request_register_method(
+            PyroSongActions.GET_TRACKS,
+            ZstMethod.RESPONDER, {"category": 0},
             self.incoming, None)
 
         self.node.request_register_method(

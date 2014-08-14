@@ -1,6 +1,6 @@
-echo "Updating scripts"
+echo "Copying Showtime-Live scripts"
 
-LOCAL_SOURCE="$HOME/Code/Showtime-Live/Midi_Remote_Scripts/ShowtimeBridge"
+LOCAL_SOURCE="$HOME/Code/Showtime/Showtime-Live/Midi_Remote_Scripts/ShowtimeBridge"
 REMOTE_SOURCE="/Applications/Ableton Live 9 Standard.app/Contents/App-Resources/MIDI Remote Scripts"
 LIVE_APP="/Applications/Ableton Live 9 Standard.app/"
 

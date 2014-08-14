@@ -11,8 +11,10 @@ class PyroSongActions:
     FIRE_CLIP = "fire_clip"
     SET_VALUE = "set_value"
     GET_SONG_LAYOUT = "get_song_layout"
+    GET_TRACKS = "get_tracks"
     STOP_TRACK = "stop_track"
     SET_SEND = "set_send"
+    METERS_UPDATED = "meters_updated"
 
 
 class PyroSong(PyroWrapper):
@@ -28,9 +30,12 @@ class PyroSong(PyroWrapper):
 
         self.incomingActions[PyroSongActions.SET_VALUE] = self.set_value
         self.incomingActions[PyroSongActions.GET_SONG_LAYOUT] = self.get_song_layout
+        self.incomingActions[PyroSongActions.GET_TRACKS] = self.get_tracks
         self.incomingActions[PyroSongActions.FIRE_CLIP] = self.fire_clip
         self.incomingActions[PyroSongActions.STOP_TRACK] = self.stop_track
         self.incomingActions[PyroSongActions.SET_SEND] = self.set_send
+
+        self.get_reference().add_current_song_time_listener(self.song_time_updated)
 
     def get_song(self):
         return getSong()
@@ -75,6 +80,17 @@ class PyroSong(PyroWrapper):
                     self.log_message(e)
             self.valueChangedMessages = {}
 
+    def song_time_updated(self):
+        meterLevels = []
+        for trackindex, track in enumerate(self.tracks):
+            if not track.get_reference().has_midi_output:
+                meterLevels.append((track.get_reference().output_meter_left + track.get_reference().output_meter_right) * 0.5)
+            else:
+                meterLevels.append(track.get_reference().output_meter_level)
+
+        self.publisher.publish_check(
+            PyroShared.OUTGOING_PREFIX + PyroSongActions.METERS_UPDATED, meterLevels)
+
     # Incoming
     # --------
     def set_value(self, args):
@@ -93,8 +109,9 @@ class PyroSong(PyroWrapper):
 
     def fire_clip(self, args):
         self.log_message(launchClip)
-        launchClip(int(args["trackindex"]), int(args["clipindex"]))
-        self.log_message("Clip not found! " + str(args["trackindex"]) + ", " + str(args["clipindex"]))
+        #launchClip(int(args["trackindex"]), int(args["clipindex"]))
+        self.tracks[int(args["trackindex"])].get_reference().clip_slots[int(args["clipindex"])].fire()
+        #self.log_message("Clip not found! " + str(args["trackindex"]) + ", " + str(args["clipindex"]))
 
     def stop_track(self, args):
         self.log_message("Stopping track " + str(args["trackindex"]))
@@ -111,50 +128,86 @@ class PyroSong(PyroWrapper):
         self.publisher.publish_check(
             PyroShared.OUTGOING_PREFIX + PyroSongActions.GET_SONG_LAYOUT, self.dump_song_xml())
 
+    def get_tracks(self, args=None):
+        self.log_message("Inside JSON track formatter")
+
+        trackgroup = None
+
+        if("category" in args):
+            self.log_message("Category is " + str(args["category"]))
+
+            if int(args["category"]) == 0:
+                trackgroup = getTracks()
+            elif int(args["category"]) == 1:
+                trackgroup = getSong().return_tracks
+
+            if(trackgroup):
+                self.log_message("Trackgroup is " + str(trackgroup))
+                tracks = self.tracks_to_object(trackgroup)
+                self.log_message(tracks)
+            else:
+                tracks = {"error" : "Category argument out of range"}
+        else:
+            tracks = {"error" : "Category argument missing"}
+
+        self.publisher.publish_check(
+            PyroShared.OUTGOING_PREFIX + PyroSongActions.GET_TRACKS, tracks)
+
     def clips_to_json(self):
         return None
 
-    def tracks_to_json(self):
-        tracks = []
-        for track in len(getTracks()):
-            t = getTracks()[track]
-            mixer = t.mixer_device
-
+    def tracks_to_object(self, trackgroup):
+        tracks = {"tracklist":[]}
+        for trackindex, track in enumerate(trackgroup):
+            mixer = track.mixer_device
             sends = []
-            for send in mixer.sends:
-                sends.append({
-                    "name": send.name,
-                    "value": send.value,
-                    "min": send.min,
-                    "max": send.max})
 
-            trackobj = {
-                "trackindex": track,
-                "name": t.name,
-                "armed": (True if r.can_be_armed else False),
-                "volume": mixer.volume,
-                "pan": mixer.panning,
-                "solo": t.solo,
-                "mute": t.mute,
-                "sends": sends}
-            tracks.append(trackobj)
+            try:
+                trackObj = {
+                    "trackindex": trackindex,
+                    "name": track.name,
+                    "armed": (track.arm if track.can_be_armed else False),
+                    "volume": ({
+                            "name": mixer.volume.name,
+                            "min": mixer.volume.min,
+                            "max": mixer.volume.max,
+                            "value": mixer.volume.value
+                        } if not track.has_midi_output else None),
+                    "pan": ({
+                            "name": mixer.panning.name,
+                            "min": mixer.panning.min,
+                            "max": mixer.panning.max,
+                            "value": mixer.panning.value
+                        } if not track.has_midi_output else None),
+                    "solo": track.solo,
+                    "color": track.color,
+                    "mute": track.mute,
+                    "sends": sends,
+                    "midi": track.has_midi_input,
+                    "parameters": []}
+            except:
+                return "!!! Error parsing track"
 
-    def parameters_to_json(self, trackgroup):
-        parameters = []
-        for track in len(trackgroup):
-            for device in len(track.devices):
-                for parameter in len(device.parameters):
-                    param = track.devices[device].parameters[parameter]
-                    paramObj = {
-                        "trackindex": track,
-                        "deviceindex": device,
-                        "parameterindex": parameter,
-                        "name": param.name,
-                        "min": param.min,
-                        "max": param.max,
-                        "value": param.value}
-                    parameters.append(paramObj)
-        return parameters
+            for deviceindex, device in enumerate(track.devices):
+
+                for parameterindex, parameter in enumerate(device.parameters):
+                    self.log_message("Parsing param " + str(parameter.name))
+
+                    try:
+                        paramObj = {
+                            "trackindex": trackindex,
+                            "deviceindex": deviceindex,
+                            "parameterindex": parameterindex,
+                            "min": parameter.min,
+                            "max": parameter.max,
+                            "value": parameter.value,
+                            "name": parameter.name
+                        }
+                    except:
+                        return "!!! Error parsing parameter"
+                    trackObj["parameters"].append(paramObj)
+            tracks["tracklist"].append(trackObj)
+        return tracks
 
     def dump_song_xml(self):
         xmlString = "<?xml version='1.0' encoding='UTF-8'?>\n"
@@ -200,6 +253,9 @@ class PyroSong(PyroWrapper):
                                 "' />\n"
                         except:
                             return ("!! error parsingclip !!")
+                    elif( myClipSlot.controls_other_clips): 
+                        xmlString += "\t\t<clip index='" + str(clipIndex) + \
+                        "' name='scene_" + str(clipIndex) + "' color='" + str(myTrack.color) + "'/>\n"
                     clipIndex += 1
 
                 sendIndex = 0
