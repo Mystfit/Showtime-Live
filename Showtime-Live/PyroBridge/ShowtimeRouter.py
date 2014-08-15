@@ -48,7 +48,7 @@ class ShowtimeRouter(Subscriber):
 
     def close(self):
         self.node.close()
-        if(hasAttr(self, "stageNode")):
+        if(hasattr(self, "stageNode")):
             self.stageNode.close()
         self.getDaemon().shutdown(True)
         self.midiRouter.close()
