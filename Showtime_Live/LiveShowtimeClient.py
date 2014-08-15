@@ -13,8 +13,14 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose", defaul
 parser.add_option("-s", "--stagehost", action="store", dest="stageaddress", type="string", help="IP address of the Showtime stage.", default=None)
 parser.add_option("-p", "--stageport", action="store", dest="stageport", type="string", help="Port of the Showtime stage", default="6000")
 parser.add_option("-m", "--midiportindex", action="store", dest="midiportindex", type="int", help="Midi loopback port to use. Windows only, make sure loopMidi is running first!", default=1)
+parser.add_option("--listmidiports", action="store_true", dest="listmidiports", help="List the available midi ports on the system.", default=False)
 
 (options, args) = parser.parse_args()
+
+if options.listmidiports:
+    midiRouter = Showtime_Live.MidiRouter.MidiRouter(None)
+    midiRouter.listMidiPorts()
+    sys.exit(0)
 
 #Server startup
 Showtime_Live.PyroBridge.PyroServerStarter.startServer()

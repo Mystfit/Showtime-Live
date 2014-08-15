@@ -39,6 +39,9 @@ class MidiRouter:
         # Setup midi port 
         self.midi_out = self.createMidi(midiportindex)
 
+        if not midiportindex:
+            return
+
         # Set up midi clock
         self.clock = Clock(self.midi_out)
         self.clock.start()
@@ -57,22 +60,19 @@ class MidiRouter:
         # Midi startup. Try creating a virtual port. Doesn't work on Windows
         midi_out = rtmidi.MidiOut()
 
-        if platform.system() == "Windows":
-            print "\nCan't open virtual midi port on windows. Trying midi loopback instead."
-            print "Available MidiOut ports: "
-            portindex = 0
-            for port in midi_out.ports:
-                print str(portindex) + ": " + str(port)
-                portindex += 1
-            
-            if len(midi_out.ports) < 2:
-                return None
- 
-            midi_out.open_port(midiportindex)
-        else:
-            midi_out.open_virtual_port("LiveShowtime_Midi")
+        if midiportindex:
+            if platform.system() == "Windows":
+                print "\nCan't open virtual midi port on windows. Using midi loopback instead."
+                midi_out.open_port(midiportindex)
+            else:
+                midi_out.open_virtual_port("LiveShowtime_Midi")
 
         return midi_out
+
+    def listMidiPorts(self):
+        print("Available MidiOut ports:")
+        for portindex, port in enumerate(self.midi_out.ports):
+            print str(portindex) + ": " + str(port)
 
 
     def close(self):

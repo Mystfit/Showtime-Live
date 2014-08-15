@@ -4,24 +4,26 @@ Showtime-Live
 This repository is for a bridge connecting Ableton Live
 to a [Showtime](https://github.com/Mystfit/Showtime) network via Pyro remote objects.
 
+*Requirements:*
+- Requires Python 2.7. 
 
 Installation - All
 ------------
 
-- Install [Showtime](https://github.com/Mystfit/Showtime) for Python.
-- Install [Pyro 3.16](https://pypi.python.org/pypi/Pyro) (or run "easy_install Pyro")
-- Install [rtmidi-python](https://github.com/superquadratic/rtmidi-python) (or run "pip install rtmidi-python")
-
-- Copy the contents of Midi_Remote_Scripts to your Remote scripts folder. Ableton have provided some [handy instructions here.](https://www.ableton.com/en/articles/install-third-party-remote-script/)
-- Create a Showtime stage. This is done by running the python/Showtime/zst_stage.py script from the Showtime library. (eg. "python zst_stage.py").
-- Run LiveShowtimeClient.py and give it the ip:port of the stage. (eg. "python LiveShowtimeClient.py 0.0.0.0:6000" if you're running the stage locally).
-- Run Ableton Live and underneath Preferences->Midi select "ShowtimeBridge" from the control surface dropdown, and "LiveShowtime Midi" from the input dropdown.
+- Copy the contents of Showtime_Live/Midi_Remote_Scripts to your Remote scripts folder. Ableton have provided some [handy instructions here.](https://www.ableton.com/en/articles/install-third-party-remote-script/)
+- Install by using ```python setup.py install```
+- From a command window run LiveShowtimeClient.py
+- If you're running a seperate Showtime stage node then you can specify the address at the commandline. Run ```LiveShowtimeClient.py --help```
+ to list the available commands.
+- Start Ableton Live and underneath Preferences->Midi select "ShowtimeBridge" from the control surface dropdown, and "LiveShowtime Midi" (Windows) or your loopMidi port.
 - You can now run/use any of the test scripts from either the Showtime library or the Showtime-Live library to access Live API features.
+
+- Create a Showtime stage. This is done by running the python/Showtime/zst_stage.py script from the Showtime library. (eg. "python zst_stage.py").
 
 Installation - Windows
 ----------------------
 
-Rtmidi-python can't create a virtual midi port on Windows due to limitations in the Windows multimedia api. Instead, use a tool such as [loopmidi](http://www.tobias-erichsen.de/software/loopmidi.html) to create a virtual loopback port. Run the LiveShowtimeClient.py script to print out a list of available midi out ports, then change the MIDI_LOOPBACK_PORT variable inside MidiRouter.py to match the number of the port. This will be changed in the future once I find a more reliable method of either creating a virtual midi port, or I'll make it easier to configure. Todo!
+Rtmidi-python can't create a virtual midi port on Windows due to limitations in the Windows multimedia api. Instead, use a tool such as [loopmidi](http://www.tobias-erichsen.de/software/loopmidi.html) to create a virtual loopback port. Run the LiveShowtimeClient.py with the flag `--listmidiports` script to print out a list of available midi out ports, then run the script with `-m #` where `#` is the midi port to use.
 
 Current exposed methods
 -----------------------
@@ -31,6 +33,8 @@ Current exposed methods
 - playing_slot_index
 - send_updated
 - value_updated
+- output_meter
+
 
 *Incoming*
 - fire_clip
@@ -56,6 +60,7 @@ Current exposed methods
 
 *Responders*
  - get_song_layout
+ - get_tracks
 
 
 Bugs
