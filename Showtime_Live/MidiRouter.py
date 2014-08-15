@@ -23,7 +23,7 @@ class Clock(threading.Thread):
         self.exitFlag = 1
 
     def run(self):
-        while not self.exitFlag:
+        while not self.exitFlag and self.midi_out:
             self.clockVal += 1
             self.clockVal = self.clockVal % 127
             self.midi_out.send_message([0xB0, 119, self.clockVal])
@@ -35,23 +35,9 @@ class MidiRouter:
     NOTE_ON = 0x90
     NOTE_OFF = 0x80
 
-    MIDI_LOOPBACK_PORT = 1
-
-    def __init__(self):
-        # Midi startup. Try creating a virtual port. Doesn't work on Windows
-        self.midi_out = rtmidi.MidiOut()
-        
-        if platform.system() == "Windows":
-            print "Can't open virtual midi port on windows. Trying midi loopback instead."
-            print "Available MidiOut ports: "
-            portindex = 0
-            for port in self.midi_out.ports:
-                print str(portindex) + ": " + str(port)
-                portindex += 1
-
-            self.midi_out.open_port(MidiRouter.MIDI_LOOPBACK_PORT)
-        else:
-            self.midi_out.open_virtual_port("LiveShowtime_Midi")
+    def __init__(self, midiportindex):
+        # Setup midi port 
+        self.midi_out = self.createMidi(midiportindex)
 
         # Set up midi clock
         self.clock = Clock(self.midi_out)
@@ -61,6 +47,33 @@ class MidiRouter:
         self.activeNotes = {}
         self.lastNote = None
         self.isMonophonic = True
+
+    def midiActive(self):
+        if self.midi_out:
+            return True
+        return False
+
+    def createMidi(self, midiportindex):
+        # Midi startup. Try creating a virtual port. Doesn't work on Windows
+        midi_out = rtmidi.MidiOut()
+
+        if platform.system() == "Windows":
+            print "\nCan't open virtual midi port on windows. Trying midi loopback instead."
+            print "Available MidiOut ports: "
+            portindex = 0
+            for port in midi_out.ports:
+                print str(portindex) + ": " + str(port)
+                portindex += 1
+            
+            if len(midi_out.ports) < 2:
+                return None
+ 
+            midi_out.open_port(midiportindex)
+        else:
+            midi_out.open_virtual_port("LiveShowtime_Midi")
+
+        return midi_out
+
 
     def close(self):
         self.clock.stop()

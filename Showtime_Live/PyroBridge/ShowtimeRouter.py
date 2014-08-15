@@ -18,18 +18,22 @@ from ShowtimeBridge.LiveWrappers.PyroSendVolume import PyroSendVolumeActions
 
 from ShowtimeBridge.LivePublisher import LivePublisher
 from ShowtimeBridge import PyroShared
-import MidiRouter
+import Showtime_Live.MidiRouter
 
 
 # Event listener class for recieving/parsing messages from Live
 class ShowtimeRouter(Subscriber):
 
-    def __init__(self, stageaddress):
+    def __init__(self, stageaddress, midiportindex):
         Subscriber.__init__(self)
         self.setThreading(True)
 
         self.publisher = LivePublisher()
-        self.midiRouter = MidiRouter.MidiRouter()
+        self.midiRouter = Showtime_Live.MidiRouter.MidiRouter(midiportindex)
+
+        if not self.midiRouter.midiActive():
+            print("--- No midi loopback port available, incoming messages to Ableton will be considerably slower")
+            print("--- Is loopMidi running?\n")
 
         if not stageaddress:
             print("Creating internal stage at tcp://127.0.0.1:6000")
@@ -137,16 +141,17 @@ class ShowtimeRouter(Subscriber):
             ZstMethod.RESPONDER, {"category": 0},
             self.incoming, None)
 
-        self.node.request_register_method(
-            "play_note",
-            ZstMethod.WRITE,
-            {
-                "trackindex": None,
-                "note": None,
-                "state": None,
-                "velocity": None
-            },
-            self.midiRouter.play_midi_note)
+        if(self.midiRouter.midiActive()):
+            self.node.request_register_method(
+                "play_note",
+                ZstMethod.WRITE,
+                {
+                    "trackindex": None,
+                    "note": None,
+                    "state": None,
+                    "velocity": None
+                },
+                self.midiRouter.play_midi_note)
 
     def event(self, event):
         print "IN-->OUT: " + event.subject, '=', event.msg
