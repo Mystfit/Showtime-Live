@@ -11,18 +11,17 @@ Installation - All
 ------------
 
 - Copy the contents of Showtime_Live/Midi_Remote_Scripts to your Remote scripts folder. Ableton have provided some [handy instructions here.](https://www.ableton.com/en/articles/install-third-party-remote-script/)
-- Install by using ```python setup.py install```
-- From a command window run `LiveShowtimeClient.py`
-- If you're running a seperate Showtime stage node then you can specify the address at the commandline. Run ```LiveShowtimeClient.py --help```
+- Install using ```python setup.py install```
+- From a command window run `LiveShowtimeClient.py`. it is installed as a binary script, so should be callable globally.
+- If you're running a seperate Showtime stage node then you can specify its address at runtime. Use ```LiveShowtimeClient.py --help```
  to list the available commands.
-- Start Ableton Live and underneath Preferences->Midi select "ShowtimeBridge" from the control surface dropdown, and "LiveShowtime Midi" (Windows) or your loopMidi port.
-- You can now run/use any of the test scripts from either the Showtime library or the Showtime-Live library to access Live API features.
+- Start Ableton Live and underneath Preferences/Options->Midi select "ShowtimeBridge" from the control surface dropdown, and "LiveShowtime Midi" or your loopMidi port (Windows only).
 
 
 Installation - Windows
 ----------------------
 
-Rtmidi-python can't create a virtual midi port on Windows due to limitations in the Windows multimedia api. Instead, use a tool such as [loopmidi](http://www.tobias-erichsen.de/software/loopmidi.html) to create a virtual loopback port. Run the LiveShowtimeClient.py with the flag `--listmidiports` script to print out a list of available midi out ports, then run the script with `-m #` where `#` is the midi port to use.
+Rtmidi-python can't create a virtual midi port on Windows due to limitations in the Windows multimedia api. Instead, use a tool such as [loopmidi](http://www.tobias-erichsen.de/software/loopmidi.html) to create a virtual loopback port. Run the LiveShowtimeClient.py with the flag `--listmidiports` to print out a list of available midi out ports, then run the script with `-m #` where `#` is the midi port to use.
 
 Current exposed methods
 -----------------------
