@@ -39,7 +39,7 @@ class MidiRouter:
         # Setup midi port 
         self.midi_out = self.createMidi(midiportindex)
 
-        if not midiportindex:
+        if not self.midi_out:
             return
 
         # Set up midi clock
@@ -62,8 +62,11 @@ class MidiRouter:
 
         if midiportindex:
             if platform.system() == "Windows":
-                print "\nCan't open virtual midi port on windows. Using midi loopback instead."
-                midi_out.open_port(midiportindex)
+            	if len(midi_out.ports) > 1:
+                	print "\nCan't open virtual midi port on windows. Using midi loopback instead."
+                	midi_out.open_port(midiportindex)
+                else:
+                	return None
             else:
                 midi_out.open_virtual_port("LiveShowtime_Midi")
 
