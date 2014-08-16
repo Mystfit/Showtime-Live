@@ -1,0 +1,3 @@
+include *.bat
+include *.sh
+include *.md
