@@ -1,3 +1,5 @@
+#!python
+
 import sys
 import Pyro.util
 import Pyro.core
