@@ -1,6 +1,6 @@
 Pyro_NS_URI
 *.pyc
-
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

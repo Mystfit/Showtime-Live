@@ -1,8 +1,8 @@
 try:
-    from ShowtimeBridge import ShowtimeBridge
+	from ShowtimeBridge import ShowtimeBridge
 except ImportError:
-    #print("Couldn't import ShowtimeBridge")
-    pass
+	pass
+
 
 def create_instance(c_instance):
     return ShowtimeBridge(c_instance)

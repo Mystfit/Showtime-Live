@@ -22,11 +22,12 @@ from _Framework.ControlSurface import ControlSurface
 from _Framework.EncoderElement import EncoderElement
 
 # Import custom live objects
+from LiveUtils import *
 from ControlSurfaceComponents import *
 from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
 from LiveSubscriber import LiveSubscriber
+from LiveWrappers.PyroWrapper import PyroWrapper
 from LiveWrappers.PyroSong import PyroSong
-from LiveWrappers.LiveUtils import *
 from LivePublisher import LivePublisher
 
 
@@ -48,12 +49,19 @@ class ShowtimeBridge(ControlSurface):
             self.clock = None
 
             self.initPyroServer()
-            self.songWrapper = PyroSong(self.publisher, self.log_message)
-            self.subscriber.set_song(self.songWrapper)
+            self.songWrapper = PyroSong(getSong(), None, self.log_message)
 
-            for action, callback in self.songWrapper.incomingActions.iteritems():
-                self.log_message("Adding " + str(action) + " to incoming callbacks")
-                self.subscriber.add_incoming_action(action, callback)
+            # Register methods to the showtimebridge server
+            for cls in PyroWrapper.__subclasses__():
+                cls.register_methods()
+                for action in cls.incoming_methods().values():
+                    self.log_message("Adding " + str(action) + " to incoming callbacks")
+                    self.subscriber.add_incoming_action(action.methodName, action.callback)
+                    self.publisher.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
+
+                for action in cls.outgoing_methods().values():
+                    self.log_message("Adding " + str(action) + " to outgoing methods")
+                    self.publisher.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check
             self.clock = PyroEncoderElement(0, 119)
@@ -62,15 +70,19 @@ class ShowtimeBridge(ControlSurface):
             self.refresh_state()
             self._suppress_send_midi = False
 
+
     def initPyroServer(self):
         Pyro.config.PYRO_ES_BLOCKQUEUE = False
 
         # Event listener
         Pyro.core.initClient()
 
-        # Create publisher
+        # Create publisher and subscriber links to event server
         self.publisher = LivePublisher(self.log_message)
         self.subscriber = LiveSubscriber(self.publisher, self.log_message)
+
+        # Set the global publisher for all wrappers
+        PyroWrapper.set_publisher(self.publisher)
 
     def disconnect(self):
         self._suppress_send_midi = True
@@ -86,7 +98,8 @@ class ShowtimeBridge(ControlSurface):
         ControlSurface.build_midi_map(self, midi_map_handle)
 
     def receive_midi(self, midi_bytes):
-        #self.log_message("Received midi! " + str(midi_bytes))
+        # Hack to get a faster update loop. Call our update function each time we receive
+        # a midi message
         self.requestLoop()
         ControlSurface.receive_midi(self, midi_bytes)
 

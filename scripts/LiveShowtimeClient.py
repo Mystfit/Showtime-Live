@@ -7,7 +7,7 @@ from Pyro.errors import NamingError
 from optparse import OptionParser
 
 import Showtime_Live.PyroBridge.PyroServerStarter
-from Showtime_Live.PyroBridge.ShowtimeRouter import ShowtimeRouter
+from Showtime_Live.PyroBridge.LiveRouter import LiveRouter
 
 # Options parser
 parser = OptionParser()
@@ -35,7 +35,7 @@ stageaddress = options.stageaddress
 if stageaddress:
     stageaddress += ":" + str(options.stageport)
 
-showtimeRouter = ShowtimeRouter(stageaddress, options.midiportindex)
+showtimeRouter = LiveRouter(stageaddress, options.midiportindex)
 
 # Enter into the idle loop to handle messages
 try:

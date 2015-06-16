@@ -2,9 +2,8 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 
 from Pyro.EventService.Clients import Subscriber
-from LiveWrappers import *
-import PyroShared
-
+from LiveWrappers.PyroWrapper import PyroWrapper
+from PyroShared import PyroPrefixes
 
 # Event listener class for recieving/parsing messages from Live
 class LiveSubscriber(Subscriber):
@@ -16,17 +15,11 @@ class LiveSubscriber(Subscriber):
 
         self.publisher = publisher
         self.requestLock = True
-        self.songWrapper = None
-        self.incomingActions = {}
-        self.incomingSubscriptions = []
+        self.incomingSubscriptions = {}
 
-    def set_song(self, song):
-        self.songWrapper = song
-
-    def add_incoming_action(self, key, callback):
-        self.incomingActions[key] = callback
-        self.incomingSubscriptions.append(PyroShared.INCOMING_PREFIX + key)
-        self.subscribe(self.incomingSubscriptions)
+    def add_incoming_action(self, action, callback):
+        self.incomingSubscriptions[PyroPrefixes.prefix_incoming(action)] = callback
+        self.subscribe(self.incomingSubscriptions.keys())
 
     def handle_requests(self):
         requestCounter = 0
@@ -44,16 +37,15 @@ class LiveSubscriber(Subscriber):
         if requestCounter > 10:
             self.log_message(str(requestCounter) + " loops to clear queue")
 
-        if self.songWrapper:
-            self.songWrapper.process_value_changed_messages()
+        # Apply all wrapper values that have been queued
+        for cls in PyroWrapper.__subclasses__():
+            cls.process_queued_events()
 
     def event(self, event):
         self.requestLock = True     # Lock the request loop
-        subject = event.subject[len(PyroShared.INCOMING_PREFIX):]
-        self.log_message("Received method " + subject)
-
-        if subject in self.incomingActions:
-            self.log_message("Matched method " + subject + " with " + str(self.incomingActions[subject]))
-            self.incomingActions[subject](event.msg)
-        else:
-            self.log_message("Incoming method not registered!")
+        self.log_message("Received method " + event.subject[2:])
+        try:
+            self.incomingSubscriptions[event.subject].callback(event.msg)
+        except KeyError, e:
+            self.log_message("Don't know {0} message type".format(event.subject))
+            self.log_message(e)
