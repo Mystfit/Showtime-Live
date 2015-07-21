@@ -4,13 +4,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 from Pyro.EventService.Clients import Publisher
 import Pyro.errors
 from PyroShared import PyroPrefixes
-
+from Logger import Log
 
 class LivePublisher(Publisher):
-
-    def __init__(self, logger=None):
-        Publisher.__init__(self)
-        self.logger = logger
 
     def send_to_showtime(self, message, args):
         return self.send_message(PyroPrefixes.prefix_outgoing(message), args)
@@ -25,25 +21,19 @@ class LivePublisher(Publisher):
         args = args if args else {}
         retries = 5
         success = False
-        self.log_message("Publishing message " + str(message))
+        Log.write("Publishing message " + str(message))
 
         while retries > 0:
             try:
                 self.publish(message, args)
                 success = True
-                self.log_message("Success!")
+                Log.write("Success!")
             except Pyro.errors.ConnectionClosedError, e:
-                self.log_message(e)
-                self.log_message(
+                Log.write(e)
+                Log.write(
                     "Rebinding. {0} retries left.".format(str(retries)))
                 self.adapter.rebindURI()
                 retries -= 1
             if success:
                 break
         return success
-
-    def log_message(self, message):
-        if self.logger:
-            self.logger(message)
-        else:
-            print message

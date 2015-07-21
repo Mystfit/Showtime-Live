@@ -4,21 +4,21 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 from Pyro.EventService.Clients import Subscriber
 from LiveWrappers.PyroWrapper import PyroWrapper
 from PyroShared import PyroPrefixes
+from Logger import Log
 
 # Event listener class for recieving/parsing messages from Live
 class LiveSubscriber(Subscriber):
 
-    def __init__(self, publisher, logger):
+    def __init__(self, publisher):
         Subscriber.__init__(self)
-        self.log_message = logger
         self.setThreading(False)
 
         self.publisher = publisher
         self.requestLock = True
         self.incomingSubscriptions = {}
 
-    def add_incoming_action(self, action, callback):
-        self.incomingSubscriptions[PyroPrefixes.prefix_incoming(action)] = callback
+    def add_incoming_action(self, action, cls, callback):
+        self.incomingSubscriptions[PyroPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
         self.subscribe(self.incomingSubscriptions.keys())
 
     def handle_requests(self):
@@ -35,7 +35,7 @@ class LiveSubscriber(Subscriber):
             requestCounter += 1
         self.requestLock = True
         if requestCounter > 10:
-            self.log_message(str(requestCounter) + " loops to clear queue")
+            Log.write(str(requestCounter) + " loops to clear queue")
 
         # Apply all wrapper values that have been queued
         for cls in PyroWrapper.__subclasses__():
@@ -43,9 +43,6 @@ class LiveSubscriber(Subscriber):
 
     def event(self, event):
         self.requestLock = True     # Lock the request loop
-        self.log_message("Received method " + event.subject[2:])
-        try:
-            self.incomingSubscriptions[event.subject].callback(event.msg)
-        except KeyError, e:
-            self.log_message("Don't know {0} message type".format(event.subject))
-            self.log_message(e)
+        Log.write("Received method " + event.subject[2:])
+        Log.write("Args are:" + str(event.msg)) 
+        self.incomingSubscriptions[event.subject]["function"](event.msg)

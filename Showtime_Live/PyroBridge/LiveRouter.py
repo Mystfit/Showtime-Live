@@ -26,8 +26,8 @@ class RegistrationThread(threading.Thread):
         self.node = node
         self.queued_registrations = Queue.Queue()
 
-    def add_registration_request(self, methodname, methodaccess, methodargs):
-        self.queued_registrations.put((methodname, methodaccess, methodargs))
+    def add_registration_request(self, *args):
+        self.queued_registrations.put(args)
 
     def stop(self):
         self.exitFlag = 1
@@ -35,7 +35,7 @@ class RegistrationThread(threading.Thread):
     def run(self):
         while not self.exitFlag:
             req = self.queued_registrations.get(True)
-            self.node.request_register_method(req[0], req[1], req[2])
+            self.node.request_register_method(req[0], req[1], req[2], req[3])
         self.join(2)
 
 class LiveRouter(Subscriber):
@@ -97,7 +97,7 @@ class LiveRouter(Subscriber):
         pyroType = event.subject[:1]
 
         if pyroType == PyroPrefixes.REGISTRATION:
-            self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"])
+            self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
         elif methodName in self.node.methods:
             self.node.update_local_method_by_name(methodName, event.msg)
         else:

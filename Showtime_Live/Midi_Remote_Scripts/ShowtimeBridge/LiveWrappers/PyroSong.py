@@ -1,53 +1,37 @@
 from PyroWrapper import *
 from PyroTrack import PyroTrack
-from PyroDevice import PyroDevice
-from PyroDeviceParameter import PyroDeviceParameter
-from PyroSend import PyroSend
+
 
 class PyroSong(PyroWrapper):
     # Message types
     SONG_LAYOUT = "song_layout"
-    SONG_METERS = "song_meters"    
+    SONG_TRACKS_UPDATED = "song_tracks_updated"
+    SONG_METERS = "song_meters"
 
-    def __init__(self, handle, parent=None, logger=None):
-        PyroWrapper.__init__(self, handle, parent)
-        self.log_message = logger
+    # -------------------
+    # Wrapper definitions
+    # -------------------
+    def create_listeners(self):
         self.handle().add_current_song_time_listener(self.song_time_updated)
+        self.handle().add_tracks_listener(self.song_tracks_updated)
+        self.handle().add_return_tracks_listener(self.song_tracks_updated)
+
+
+    def destroy_listeners(self):
+        self.handle().remove_current_song_time_listener(self.song_time_updated)
+        self.handle().remove_tracks_listener(self.song_tracks_updated)
+        self.handle().remove_return_tracks_listener(self.song_tracks_updated)
+
 
     @classmethod
     def register_methods(cls):
         PyroSong.add_outgoing_method(PyroSong.SONG_METERS)
+        PyroSong.add_outgoing_method(PyroSong.SONG_TRACKS_UPDATED)
         PyroSong.add_incoming_method(PyroSong.SONG_LAYOUT, None, PyroSong.build_song_layout, True)
 
-    def build_wrappers(self):
-        # Tracks
-        for trackindex, track in enumerate(self.handle().tracks):
-            trackWrapper = PyroTrack(trackindex, track, self)
-
-            # Devices
-            for deviceindex, device in enumerate(track.devices):
-                deviceWrapper = PyroDevice(deviceindex, device, trackWrapper)
-
-                # Device parameters
-                for parameterindex, param in enumerate(device.parameters):
-                    parameterWrapper = PyroDeviceParameter(parameterindex, param, deviceWrapper)
-
-            # # Sends
-            # for sendindex, send in enumerate(trackWrapper.handle().mixer_device.sends):
-            #     sendParamWrapper = PyroSendVolume(sendindex, send, trackWrapper)
-
-        # Return tracks
-        # for returntrackindex, returntrack in enumerate(self.handle().return_tracks):
-        #     returnTrackWrapper = PyroReturn(returntrackindex, returntrack, self)
-
-        #     # Return devices
-        #     for deviceindex, device in enumerate(returntrack.devices):
-        #         deviceWrapper = PyroDevice(deviceindex, device, returnTrackWrapper)
-
-        #         # Return parameters
-        #         for parameterindex, parameter in enumerate(device.parameters):
-        #             parameterWrapper = PyroDeviceParameter(parameterindex, parameter, deviceWrapper)
-
+    # --------
+    # Outgoing
+    # --------
     def song_time_updated(self):
         meterLevels = []
         for track in PyroTrack.instances():
@@ -55,33 +39,32 @@ class PyroSong(PyroWrapper):
                 meterLevels.append((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5)
             else:
                 meterLevels.append(track.handle().output_meter_level)
-
         self.update(PyroSong.SONG_METERS, meterLevels)
 
+    def song_tracks_updated(self, *args):
+        self.update_hierarchy()
+
+    # --------
     # Incoming
     # --------
-
-    # Outgoing
-    # --------
-
     @staticmethod
     def build_song_layout(args):
-        self.log_message("Inside JSON track formatter")
+        Log.write("Inside JSON track formatter")
 
         trackgroup = None
 
         if("category" in args):
-            self.log_message("Category is " + str(args["category"]))
+            Log.write("Category is " + str(args["category"]))
 
             if int(args["category"]) == 0:
-                trackgroup = getTracks()
+                trackgroup = handle().tracks
             elif int(args["category"]) == 1:
-                trackgroup = getSong().return_tracks
+                trackgroup = handle().return_tracks
 
             if(trackgroup):
-                self.log_message("Trackgroup is " + str(trackgroup))
+                Log.write("Trackgroup is " + str(trackgroup))
                 tracks = self.tracks_to_object(trackgroup)
-                self.log_message(tracks)
+                Log.write(tracks)
             else:
                 tracks = {"error" : "Category argument out of range"}
         else:
@@ -89,8 +72,16 @@ class PyroSong(PyroWrapper):
 
         PyroSong.findById(args["id"]).update(PyroSong.SONG_LAYOUT, tracks)
 
-    def clips_to_json(self):
-        return None
+    # ---------
+    # Utilities
+    # ---------
+
+    # ---------
+    # Hierarchy
+    def update_hierarchy(self):
+        Log.write("Track hierarchy updated")
+        PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().tracks)
+        # PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().return_tracks)
 
     def tracks_to_object(self, trackgroup):
         tracks = {"tracklist":[]}

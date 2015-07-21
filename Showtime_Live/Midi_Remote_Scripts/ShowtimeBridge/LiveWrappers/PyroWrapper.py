@@ -1,5 +1,7 @@
-from .. import LiveUtils
-from .. import PyroShared
+# from .. import LiveUtils
+# from .. import PyroShared
+from ..Logger import Log
+
 
 class PyroWrapper(object):
     # Proxy method types for Showtime
@@ -21,97 +23,182 @@ class PyroWrapper(object):
     _queued_wrappers = set()
 
     # Constructor
-    def __init__(self, handle, parent=None):
+    def __init__(self, handle, handleindex=None, parent=None):
         self._handle = handle
-        self._parent = parent
-
-        # Try to register the instance at the class level
-        if not self.__class__._instances:
-            self.__class__._instances = {}
+        self._children = set()
+        self.handleHash = hash(handle)
+        Log.write(str(self) + " hash:" + str(self.handleHash))
         self.__class__.add_instance(self)
+        
+        if parent:
+            self._parent = parent
+            self._parent.add_child(self)
+            self.handleindex = handleindex
+
+        self.create_listeners()
+        self.update_hierarchy()
+
+    def update_hierarchy(self, cls=None, livevector=None):
+        """Refreshes the hierarchy of wrappers underneath this wrapper"""
+        if cls and livevector:
+            cls.remove_child_wrappers(livevector)
+            cls.create_child_wrappers(self, livevector)
+
+    @classmethod
+    def create_child_wrappers(cls, parent, livevector):
+        """Create missing child wrappers underneath this wrapper"""
+        Log.write("Creating missing wrappers")
+        for index, handle in enumerate(livevector):
+            Log.write("Index is " + str(index) + ". Handle is " + str(handle))
+            wrapper = cls.findWrapperByHandle(handle)
+
+            if not wrapper:
+                cls.add_instance(cls(handle, index, parent))
+                Log.write(str(cls) + " added a new instance")
+            else:
+                Log.write(str(wrapper.handleHash) + " already has a wrapper")
+
+    @classmethod
+    def remove_child_wrappers(cls, livevector):
+        """Remove wrappers that are missing a live object"""
+        for wrapperId, wrapper in enumerate(cls.instances()):
+            if wrapperId not in livevector:
+                Log.write(str(wrapper.handleHash) + " is missing. Removing!")
+                wrapper.destroy()
+                del wrapper
+    
+    def add_child(self, child):
+        """Add a child wrapper to this wrapper
+        """
+        self._children.add(child)
+    
+    def children(self):
+        """Return all children of this wrapper"""
+        return _children
 
     @classmethod
     def add_instance(cls, instance):
-        cls._instances[id(instance)] = instance
+        """Registers an instance of the class at the class level"""
+        if not cls._instances:
+            cls._instances = {}
 
-    '''Returns a list of all instances of this node available'''
+        cls._instances[instance.handleHash] = instance
+        return instance
+
+    """Returns a list of all instances of this node available"""
     @classmethod
     def instances(cls):
+        """Returns a list of all instances of this node available"""
         return cls._instances.values() if cls._instances else []
 
-    '''Find an reference of this class from a given id'''
-    @classmethod
-    def findById(cls, instanceId):
-        return cls._instances[instanceId]
+    @staticmethod
+    def all_instances():
+        """Returns all active wrappers"""
+        instances = {}
+        for cls in PyroWrapper.__subclasses__():
+            instances.update(cls.instances())
+        return instances
 
-    '''Set the global publisher for all wrappers'''
+    @classmethod
+    def clear_instances(cls):
+        """Clear all instances of a class type"""
+        cls._instances = {}
+
+    @classmethod
+    def findWrapperByHandle(cls, handle):
+        """Find an reference of this class from a given id"""
+        try:
+            return cls._instances[hash(handle)]
+        except KeyError:
+            return None
+
     @staticmethod
     def set_publisher(publisher):
+        """Set the global publisher for all wrappers"""
         PyroWrapper._publisher = publisher
 
-    '''Destructor for this wrapper'''
     def destroy(self):
-        del _instances[self.id()]
+        """Destructor for this wrapper"""
+        for child in self._children:
+            child.destroy()
+        self._children.clear()
 
-    '''Registers a method for this wrapper that will publish to the network'''
+        self.destroy_listeners()
+        Log.write(self.__class__._instances)
+        Log.write(self.handleHash)
+        del self.__class__._instances[self.handleHash]
+
+    def destroy_listeners(self):
+        """Destroy all listeners on this wrapper"""
+        pass
+
+    def create_listeners(self):
+        """Create all listeners for this object"""
+        pass
+
     @classmethod
     def add_outgoing_method(cls, methodname):
-        # if methodname in cls._outgoing_methods:
-        #     raise Exception("Trying to register an outgoing method twice!")
+        """Registers a method for this wrapper that will publish to the network"""
+        if methodname in cls._outgoing_methods:
+            Log.write("Outgoing method aready exists")
+            return
+
         cls._outgoing_methods[methodname] = PyroMethodDef(methodname, PyroWrapper.METHOD_READ)
 
-    '''Registers method for this wrapper that will receive events from the network'''
     @classmethod
     def add_incoming_method(cls, methodname, methodargs, callback, isResponder=False):
-        # if methodname in cls._incoming_methods:
-        #     raise Exception("Trying to register an incoming method twice!")
+        """Registers method for this wrapper that will receive events from the network"""
+        if methodname in cls._incoming_methods:
+            Log.write("Incoming method aready exists")
 
         accessType = PyroWrapper.METHOD_RESPOND if isResponder else PyroWrapper.METHOD_WRITE
         cls._incoming_methods[methodname] = PyroMethodDef(methodname, accessType, methodargs, callback)
 
-    '''Register all methods for this class'''
     @classmethod
     def register_methods(cls):
+        """Register all methods for this class"""
         raise NotImplementedError
 
-    '''Registered incoming methods'''
     @classmethod
     def incoming_methods(cls):
+        """Registered incoming methods"""
         return cls._incoming_methods
 
-    '''Registered outgoing methods'''
     @classmethod
     def outgoing_methods(cls):
+        """Registered outgoing methods"""
         return cls._outgoing_methods
 
-    '''Process all queued messages for wrappers that need to 
-    be applied post-eventloop'''
     @classmethod
     def process_queued_events(cls):
+        """Process all queued messages for wrappers that need to 
+        be applied post-eventloop
+        """
         for p in cls._queued_wrappers:
             p.apply_queued_event()
         PyroWrapper._queued_wrappers.clear()
 
-    '''Flag this instance as having a queued event'''
     def flag_as_queued(self):
+        """Flag this instance as having a queued event"""
         PyroWrapper._queued_wrappers.add(self)
 
-    '''Override that will be ran when the instance is processed
-    through the post-eventloop queue'''
     def apply_queued_event():
+        """Override that will be ran when the instance is processed
+        through the post-eventloop queue
+        """
         raise NotImplementedError
 
-    '''Get the Live object reference this wrapper controls'''
     def handle(self):
+        """Get the Live object reference this wrapper controls"""
         return self._handle
 
-    '''Get the parent wrapper of this wrapper'''
     def parent(self):
+        """Get the parent wrapper of this wrapper"""
         return self._parent
 
-    '''Send the updated wrapper value to the network'''
     def update(self, action, values):
-        val = {"val": values, "id": id(self._handle)}
+        """Send the updated wrapper value to the network"""
+        val = {"val": values, "id": self.handleHash}
         PyroWrapper._publisher.send_to_showtime(action, val)
 
 

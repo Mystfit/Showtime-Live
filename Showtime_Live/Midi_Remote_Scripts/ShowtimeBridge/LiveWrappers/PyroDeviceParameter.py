@@ -1,15 +1,29 @@
 from PyroWrapper import *
 
+
 class PyroDeviceParameter(PyroWrapper):
     # Message types
     PARAM_UPDATED = "param_update"
     PARAM_SET_VALUE = "param_set_value"
 
-    def __init__(self, parameterindex, handle, parent):
-        PyroWrapper.__init__(self, handle, parent)
-        self.parameterindex = parameterindex
+    def __init__(self, handle, handleindex, parent):
+        PyroWrapper.__init__(self, handle, handleindex, parent)
         self.queued_value = None
-        self.handle().add_value_listener(self.value_updated)
+
+    # -------------------
+    # Wrapper definitions
+    # -------------------
+    def create_listeners(self):
+        try:
+            self.handle().add_value_listener(self.value_updated)
+        except RuntimeError:
+            Log.write("Couldn't add listeners to parameter")
+
+    def destroy_listeners(self):
+        try:
+            self.handle().remove_value_listener(self.value_updated)
+        except RuntimeError:
+            Log.write("Couldn't remove listeners from parameter")
 
     @classmethod
     def register_methods(cls):
@@ -18,12 +32,13 @@ class PyroDeviceParameter(PyroWrapper):
             PyroDeviceParameter.PARAM_SET_VALUE, ["id", "value"],
             PyroDeviceParameter.set_value)
 
-    '''Apply the queued wrapper value post-eventloop'''
     def apply_queued_event(self):
         if self.queued_value:
+            Log.write(str(self) + " has a queued event!")
             self.handle().value = self.queued_value
             self.queued_value = None
 
+    # --------
     # Incoming
     # --------
     @staticmethod
@@ -31,7 +46,9 @@ class PyroDeviceParameter(PyroWrapper):
         instance = PyroDeviceParameter.findById(args["id"])
         instance.queued_value = float(args["value"])
         instance.flag_as_queued()
+        Log.write("Queued val:" + args["value"] + " on " + str(instance))
 
+    # --------
     # Outgoing
     # --------
     def value_updated(self):

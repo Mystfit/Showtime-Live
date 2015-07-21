@@ -19,10 +19,12 @@
 # For questions regarding this module contact
 # Rob King <rob@e-mu.org> or visit http://www.e-mu.org
 """
-
-import Live
-from _Framework.Debug import debug_print
-
+try:
+    import Live
+    from _Framework.Debug import debug_print
+except ImportError, e:
+    from Logger import Log
+    Log.write("Live library not available!")
 
 def getSong():
     """Gets a the current Song instance"""
