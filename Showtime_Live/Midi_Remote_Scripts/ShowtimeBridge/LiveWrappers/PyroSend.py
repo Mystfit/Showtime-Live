@@ -10,10 +10,12 @@ class PyroSend(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        self.handle().add_value_listener(self.send_updated)
+        if self.handle():
+            self.handle().add_value_listener(self.send_updated)
 
     def destroy_listeners(self):
-        self.handle().remove_value_listener(self.send_updated)
+        if self.handle():
+            self.handle().remove_value_listener(self.send_updated)
 
     @classmethod
     def register_methods(cls):

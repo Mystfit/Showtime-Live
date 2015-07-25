@@ -12,15 +12,17 @@ class PyroSong(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        self.handle().add_current_song_time_listener(self.song_time_updated)
-        self.handle().add_tracks_listener(self.song_tracks_updated)
-        self.handle().add_return_tracks_listener(self.song_tracks_updated)
+        if self.handle():
+            self.handle().add_current_song_time_listener(self.song_time_updated)
+            self.handle().add_tracks_listener(self.song_tracks_updated)
+            self.handle().add_return_tracks_listener(self.song_tracks_updated)
 
 
     def destroy_listeners(self):
-        self.handle().remove_current_song_time_listener(self.song_time_updated)
-        self.handle().remove_tracks_listener(self.song_tracks_updated)
-        self.handle().remove_return_tracks_listener(self.song_tracks_updated)
+        if self.handle():
+            self.handle().remove_current_song_time_listener(self.song_time_updated)
+            self.handle().remove_tracks_listener(self.song_tracks_updated)
+            self.handle().remove_return_tracks_listener(self.song_tracks_updated)
 
 
     @classmethod
@@ -79,7 +81,7 @@ class PyroSong(PyroWrapper):
     # ---------
     # Hierarchy
     def update_hierarchy(self):
-        Log.write("Track hierarchy updated")
+        Log.write("Track list changed")
         PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().tracks)
         # PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().return_tracks)
 

@@ -27,7 +27,6 @@ class PyroWrapper(object):
         self._handle = handle
         self._children = set()
         self.handleHash = hash(handle)
-        Log.write(str(self) + " hash:" + str(self.handleHash))
         self.__class__.add_instance(self)
         
         if parent:
@@ -47,9 +46,9 @@ class PyroWrapper(object):
     @classmethod
     def create_child_wrappers(cls, parent, livevector):
         """Create missing child wrappers underneath this wrapper"""
-        Log.write("Creating missing wrappers")
+        Log.write("Creating child wrappers underneath " + str(parent))
         for index, handle in enumerate(livevector):
-            Log.write("Index is " + str(index) + ". Handle is " + str(handle))
+            # Log.write("Index is " + str(index) + ". Handle is " + str(handle))
             wrapper = cls.findWrapperByHandle(handle)
 
             if not wrapper:
@@ -63,7 +62,7 @@ class PyroWrapper(object):
         """Remove wrappers that are missing a live object"""
         for wrapperId, wrapper in enumerate(cls.instances()):
             if wrapperId not in livevector:
-                Log.write(str(wrapper.handleHash) + " is missing. Removing!")
+                Log.write(str(wrapper) + " handle is missing in Live. Removing!")
                 wrapper.destroy()
                 del wrapper
     
@@ -124,8 +123,6 @@ class PyroWrapper(object):
         self._children.clear()
 
         self.destroy_listeners()
-        Log.write(self.__class__._instances)
-        Log.write(self.handleHash)
         del self.__class__._instances[self.handleHash]
 
     def destroy_listeners(self):

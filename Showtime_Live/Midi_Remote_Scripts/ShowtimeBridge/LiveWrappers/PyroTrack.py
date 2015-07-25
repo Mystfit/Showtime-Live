@@ -14,23 +14,21 @@ class PyroTrack(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        try:
-            self.handle().add_fired_slot_index_listener(self.fired_slot_index)
-            self.handle().add_playing_slot_index_listener(self.playing_slot_index)
-        except:
-            Log.write("Couldn't add listeners to track")
-
-        self.handle().add_devices_listener(self.update_hierarchy)
+        if self.handle():
+            try:
+                self.handle().add_fired_slot_index_listener(self.fired_slot_index)
+                self.handle().add_playing_slot_index_listener(self.playing_slot_index)
+                self.handle().add_devices_listener(self.update_hierarchy)
+            except:
+                Log.write("Couldn't add listeners to track")
 
     def destroy_listeners(self):
-        if self.handle().fired_slot_index_has_listener(self.fired_slot_index):
+        if self.handle():
             self.handle().remove_fired_slot_index_listener(self.fired_slot_index)
-        
-        if self.handle().playing_slot_index_has_listener(self.playing_slot_index):
             self.handle().remove_playing_slot_index_listener(self.playing_slot_index)
-
-        if self.handle().devices_has_listener(self.update_hierarchy):
-            self.handle().remove_devices_listener(self.update_hierarchy)
+            self.handle().remove_devices_listener(self.update_hierarchy)    
+        else:
+            Log.write("Handle is gone. Can't remove listeners.")   
         
     @classmethod
     def register_methods(cls):
@@ -82,4 +80,5 @@ class PyroTrack(PyroWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
+        Log.write("Device list changed")
         PyroWrapper.update_hierarchy(self, PyroDevice, self.handle().devices)

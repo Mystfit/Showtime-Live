@@ -10,16 +10,12 @@ class PyroDevice(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        try:
+        if self.handle():
             self.handle().add_parameters_listener(self.parameters_updated)
-        except RuntimeError:
-            Log.write("Couldn't add listeners to device")
 
     def destroy_listeners(self):
-        try:
+        if self.handle():
             self.handle().remove_parameters_listener(self.parameters_updated)
-        except RuntimeError:
-            Log.write("Couldn't remove listeners from device")
 
     @classmethod
     def register_methods(cls):
@@ -37,4 +33,5 @@ class PyroDevice(PyroWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
+        Log.write("Parameter list changed")
         PyroWrapper.update_hierarchy(self, PyroDeviceParameter, self.handle().parameters)

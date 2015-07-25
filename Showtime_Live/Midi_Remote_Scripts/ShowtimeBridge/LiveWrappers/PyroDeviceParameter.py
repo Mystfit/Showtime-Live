@@ -14,16 +14,12 @@ class PyroDeviceParameter(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        try:
+        if self.handle():
             self.handle().add_value_listener(self.value_updated)
-        except RuntimeError:
-            Log.write("Couldn't add listeners to parameter")
 
     def destroy_listeners(self):
-        try:
+        if self.handle():
             self.handle().remove_value_listener(self.value_updated)
-        except RuntimeError:
-            Log.write("Couldn't remove listeners from parameter")
 
     @classmethod
     def register_methods(cls):
