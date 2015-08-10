@@ -12,6 +12,7 @@ class PyroSong(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
+        PyroWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_current_song_time_listener(self.song_time_updated)
             self.handle().add_tracks_listener(self.song_tracks_updated)
@@ -19,10 +20,14 @@ class PyroSong(PyroWrapper):
 
 
     def destroy_listeners(self):
+        PyroWrapper.destroy_listeners(self)
         if self.handle():
-            self.handle().remove_current_song_time_listener(self.song_time_updated)
-            self.handle().remove_tracks_listener(self.song_tracks_updated)
-            self.handle().remove_return_tracks_listener(self.song_tracks_updated)
+            try:
+                self.handle().remove_current_song_time_listener(self.song_time_updated)
+                self.handle().remove_tracks_listener(self.song_tracks_updated)
+                self.handle().remove_return_tracks_listener(self.song_tracks_updated)
+            except RuntimeError:
+                Log.write("Couldn't remove device listener")
 
 
     @classmethod

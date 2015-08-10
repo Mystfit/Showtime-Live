@@ -14,6 +14,7 @@ class PyroTrack(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
+        PyroWrapper.create_listeners(self)
         if self.handle():
             try:
                 self.handle().add_fired_slot_index_listener(self.fired_slot_index)
@@ -23,6 +24,7 @@ class PyroTrack(PyroWrapper):
                 Log.write("Couldn't add listeners to track")
 
     def destroy_listeners(self):
+        PyroWrapper.destroy_listeners(self)
         if self.handle():
             self.handle().remove_fired_slot_index_listener(self.fired_slot_index)
             self.handle().remove_playing_slot_index_listener(self.playing_slot_index)

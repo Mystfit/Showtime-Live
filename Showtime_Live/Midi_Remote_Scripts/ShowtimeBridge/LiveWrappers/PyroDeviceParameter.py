@@ -6,20 +6,28 @@ class PyroDeviceParameter(PyroWrapper):
     PARAM_UPDATED = "param_update"
     PARAM_SET_VALUE = "param_set_value"
 
-    def __init__(self, handle, handleindex, parent):
-        PyroWrapper.__init__(self, handle, handleindex, parent)
-        self.queued_value = None
+    def create_handle_id(self):
+        return PyroDeviceParameter.format_parameter_id(self.parent().id(), self.handleindex)
+
+    @staticmethod
+    def format_parameter_id(parentId, parameterId):
+        return str(parentId) + "p" + str(parameterId)
 
     # -------------------
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
+        PyroWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_value_listener(self.value_updated)
 
     def destroy_listeners(self):
+        PyroWrapper.destroy_listeners(self)
         if self.handle():
-            self.handle().remove_value_listener(self.value_updated)
+            try:
+                self.handle().remove_value_listener(self.value_updated)
+            except RuntimeError:
+                Log.write("Couldn't remove deviceparameter listener")
 
     @classmethod
     def register_methods(cls):
@@ -40,9 +48,9 @@ class PyroDeviceParameter(PyroWrapper):
     @staticmethod
     def set_value(args):
         instance = PyroDeviceParameter.findById(args["id"])
-        instance.queued_value = float(args["value"])
-        instance.flag_as_queued()
-        Log.write("Queued val:" + args["value"] + " on " + str(instance))
+        # instance.queued_value = float(args["value"])
+        # instance.flag_as_deferred()
+        Log.write("Val:" + args["value"] + " on " + str(instance))
 
     # --------
     # Outgoing

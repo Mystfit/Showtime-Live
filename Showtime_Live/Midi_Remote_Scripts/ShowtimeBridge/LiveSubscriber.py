@@ -39,7 +39,7 @@ class LiveSubscriber(Subscriber):
 
         # Apply all wrapper values that have been queued
         for cls in PyroWrapper.__subclasses__():
-            cls.process_queued_events()
+            cls.process_deferred_actions()
 
     def event(self, event):
         self.requestLock = True     # Lock the request loop

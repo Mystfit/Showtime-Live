@@ -1,6 +1,7 @@
 # from .. import LiveUtils
 # from .. import PyroShared
 from ..Logger import Log
+import re
 
 
 class PyroWrapper(object):
@@ -8,6 +9,11 @@ class PyroWrapper(object):
     METHOD_READ = "read"
     METHOD_WRITE = "write"
     METHOD_RESPOND = "responder"
+
+    # Delimiter for handle name id's in Live
+    ID_DELIM = "-{"
+    ID_END = "}"
+    ID_NULL = "null"
 
     # Class method references
     _incoming_methods = {}
@@ -20,22 +26,67 @@ class PyroWrapper(object):
     _publisher = None
 
     # Queued wrapper events
-    _queued_wrappers = set()
+    _deferred_actions = []
+
+    # Total ID count
+    _id_counter = long(0)
 
     # Constructor
     def __init__(self, handle, handleindex=None, parent=None):
         self._handle = handle
         self._children = set()
-        self.handleHash = hash(handle)
-        self.__class__.add_instance(self)
         
         if parent:
             self._parent = parent
             self._parent.add_child(self)
-            self.handleindex = handleindex
+        
+        self.handleindex = handleindex
+
+        self._id = self.create_handle_id()
+        self.__class__.add_instance(self)
 
         self.create_listeners()
         self.update_hierarchy()
+
+
+    # Cleanup
+    # -------
+    def destroy(self):
+        """Destructor for this wrapper"""
+        for child in self._children:
+            child.destroy()
+        self._children.clear()
+        self.destroy_listeners()
+
+        del self.__class__._instances[self.id()]
+        
+        # Log.write("Couldn't find wrapper " + str(self.id()) + " in instance list")
+
+    def create_listeners(self):
+        """Create all listeners for this object"""
+        if self.handle():
+            try:
+                self.handle().add_name_listener(self.id_updated)
+            except:
+                pass
+
+    def destroy_listeners(self):
+        """Destroy all listeners on this wrapper"""
+        if self.handle():
+            try:
+                self.handle().remove_name_listener(self.id_updated)
+            except:
+                pass
+
+    # Hierarchy
+    # ---------
+    def handle(self):
+        """Get the Live object reference this wrapper controls"""
+        return self._handle
+
+    def parent(self):
+        """Get the parent wrapper of this wrapper"""
+        return self._parent
 
     def update_hierarchy(self, cls=None, livevector=None):
         """Refreshes the hierarchy of wrappers underneath this wrapper"""
@@ -49,22 +100,33 @@ class PyroWrapper(object):
         Log.write("Creating child wrappers underneath " + str(parent))
         for index, handle in enumerate(livevector):
             # Log.write("Index is " + str(index) + ". Handle is " + str(handle))
-            wrapper = cls.findWrapperByHandle(handle)
+            wrapper = cls.find_wrapper_by_handle(handle)
 
             if not wrapper:
                 cls.add_instance(cls(handle, index, parent))
                 Log.write(str(cls) + " added a new instance")
             else:
-                Log.write(str(wrapper.handleHash) + " already has a wrapper")
+                Log.write(str(wrapper.id()) + " already has a wrapper")
 
     @classmethod
     def remove_child_wrappers(cls, livevector):
         """Remove wrappers that are missing a live object"""
-        for wrapperId, wrapper in enumerate(cls.instances()):
-            if wrapperId not in livevector:
-                Log.write(str(wrapper) + " handle is missing in Live. Removing!")
+        idlist = [PyroWrapper.get_id_from_name(handle.name) for handle in livevector]
+        for wrapper in cls.instances():
+            # Log.write(wrapperId)
+            # Log.write(idlist)
+            if wrapper.id() not in idlist:
+                Log.write("==============")
+                Log.write(str(wrapper.id()) + " handle is missing in Live. Removing!")
+                Log.write("Wrappers: ")
+                for i in cls.instances():
+                    Log.write(i.id())
+                Log.write("Live:")
+                for i in idlist:
+                    Log.write(i)
                 wrapper.destroy()
-                del wrapper
+                Log.write("--------------")
+                Log.write("")
     
     def add_child(self, child):
         """Add a child wrapper to this wrapper
@@ -75,13 +137,16 @@ class PyroWrapper(object):
         """Return all children of this wrapper"""
         return _children
 
+
+    # Class instances
+    # ---------------
     @classmethod
     def add_instance(cls, instance):
         """Registers an instance of the class at the class level"""
         if not cls._instances:
             cls._instances = {}
 
-        cls._instances[instance.handleHash] = instance
+        cls._instances[instance.id()] = instance
         return instance
 
     """Returns a list of all instances of this node available"""
@@ -104,34 +169,12 @@ class PyroWrapper(object):
         cls._instances = {}
 
     @classmethod
-    def findWrapperByHandle(cls, handle):
+    def find_wrapper_by_handle(cls, handle):
         """Find an reference of this class from a given id"""
         try:
-            return cls._instances[hash(handle)]
+            return cls._instances[PyroWrapper.get_id_from_name(handle.name)]
         except KeyError:
             return None
-
-    @staticmethod
-    def set_publisher(publisher):
-        """Set the global publisher for all wrappers"""
-        PyroWrapper._publisher = publisher
-
-    def destroy(self):
-        """Destructor for this wrapper"""
-        for child in self._children:
-            child.destroy()
-        self._children.clear()
-
-        self.destroy_listeners()
-        del self.__class__._instances[self.handleHash]
-
-    def destroy_listeners(self):
-        """Destroy all listeners on this wrapper"""
-        pass
-
-    def create_listeners(self):
-        """Create all listeners for this object"""
-        pass
 
     @classmethod
     def add_outgoing_method(cls, methodname):
@@ -151,6 +194,14 @@ class PyroWrapper(object):
         accessType = PyroWrapper.METHOD_RESPOND if isResponder else PyroWrapper.METHOD_WRITE
         cls._incoming_methods[methodname] = PyroMethodDef(methodname, accessType, methodargs, callback)
 
+
+    # Network
+    # -------
+    @staticmethod
+    def set_publisher(publisher):
+        """Set the global publisher for all wrappers"""
+        PyroWrapper._publisher = publisher
+
     @classmethod
     def register_methods(cls):
         """Register all methods for this class"""
@@ -167,37 +218,80 @@ class PyroWrapper(object):
         return cls._outgoing_methods
 
     @classmethod
-    def process_queued_events(cls):
+    def process_deferred_actions(cls):
         """Process all queued messages for wrappers that need to 
         be applied post-eventloop
         """
-        for p in cls._queued_wrappers:
-            p.apply_queued_event()
-        PyroWrapper._queued_wrappers.clear()
+        for deferred in cls._deferred_actions:
+            deferred[0](deferred[1], deferred[2])
+        PyroWrapper._deferred_actions[:] = []
 
-    def flag_as_queued(self):
-        """Flag this instance as having a queued event"""
-        PyroWrapper._queued_wrappers.add(self)
-
-    def apply_queued_event():
-        """Override that will be ran when the instance is processed
-        through the post-eventloop queue
-        """
-        raise NotImplementedError
-
-    def handle(self):
-        """Get the Live object reference this wrapper controls"""
-        return self._handle
-
-    def parent(self):
-        """Get the parent wrapper of this wrapper"""
-        return self._parent
+    def defer_action(self, method, argument):
+        PyroWrapper._deferred_actions.append([method, self, argument])
 
     def update(self, action, values):
         """Send the updated wrapper value to the network"""
-        val = {"val": values, "id": self.handleHash}
+        val = {"val": values, "id": self.id()}
         PyroWrapper._publisher.send_to_showtime(action, val)
 
+
+    # ID methods
+    # ----------
+    def id(self):
+        """Return the id of this wrapper"""
+        return self._id
+
+    @staticmethod
+    def set_handle_name(instance, name):
+        try:
+            Log.write("Setting name to " + name)
+            instance.handle().name = name
+        except AttributeError:
+            Log.write("Skipping " + name)
+
+    def id_updated(self):
+        """Update the stored id if the name in ableton has changed"""
+        # self._id = self.create_handle_id()
+        self.update_hierarchy()
+
+    def create_handle_id(self):
+        """Create a new ID in memory from the handle name"""
+        handleName = None
+        handleId = None
+
+        # If the wrapper doesn't have a name attr we can skip the split step
+        try:
+            handleName = self.handle().name
+        except AttributeError:
+            handleName = PyroWrapper.ID_NULL
+
+        matchedId = PyroWrapper.get_id_from_name(handleName)
+
+        if matchedId:
+            handleId = matchedId
+        else:
+            handleId = PyroWrapper.generate_id()
+            handleName = PyroWrapper.generate_id_name_str(handleName, handleId)
+            self.defer_action(self.set_handle_name, handleName)
+        return handleId
+
+    @staticmethod
+    def generate_id():
+        PyroWrapper._id_counter += 1
+        return str(PyroWrapper._id_counter)
+
+    @staticmethod
+    def generate_id_name_str(name, idnum):
+        name = name if name else PyroWrapper.ID_NULL
+        return name + PyroWrapper.ID_DELIM + str(idnum) + PyroWrapper.ID_END
+
+    @staticmethod
+    def get_id_from_name(name):
+        """Split a handle name into name and id"""
+        search = re.search('(?<=' + PyroWrapper.ID_DELIM[0] + '\\' + PyroWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
+        if search:
+            return search.group(0)
+        return None
 
 class PyroMethodDef:
     def __init__(self, methodname, methodAccess, methodargs=None, callback=None):
