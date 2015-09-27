@@ -27,7 +27,7 @@ class PyroDeviceParameter(PyroWrapper):
             try:
                 self.handle().remove_value_listener(self.value_updated)
             except RuntimeError:
-                Log.write("Couldn't remove deviceparameter listener")
+                Log.warn("Couldn't remove deviceparameter listener")
 
     @classmethod
     def register_methods(cls):
@@ -36,21 +36,17 @@ class PyroDeviceParameter(PyroWrapper):
             PyroDeviceParameter.PARAM_SET_VALUE, ["id", "value"],
             PyroDeviceParameter.set_value)
 
-    def apply_queued_event(self):
-        if self.queued_value:
-            Log.write(str(self) + " has a queued event!")
-            self.handle().value = self.queued_value
-            self.queued_value = None
-
     # --------
     # Incoming
     # --------
     @staticmethod
     def set_value(args):
         instance = PyroDeviceParameter.findById(args["id"])
-        # instance.queued_value = float(args["value"])
-        # instance.flag_as_deferred()
-        Log.write("Val:" + args["value"] + " on " + str(instance))
+        instance.defer_action(instance.apply_param_value, args["value"])
+
+    def apply_param_value(self, value):
+        self.handle().value = float(value)
+        Log.info("Val:" + value + " on " + str(self))
 
     # --------
     # Outgoing

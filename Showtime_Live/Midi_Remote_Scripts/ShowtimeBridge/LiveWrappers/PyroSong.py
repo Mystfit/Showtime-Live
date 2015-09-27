@@ -1,5 +1,6 @@
 from PyroWrapper import *
 from PyroTrack import PyroTrack
+from PyroReturnTrack import PyroReturnTrack
 
 
 class PyroSong(PyroWrapper):
@@ -27,7 +28,7 @@ class PyroSong(PyroWrapper):
                 self.handle().remove_tracks_listener(self.song_tracks_updated)
                 self.handle().remove_return_tracks_listener(self.song_tracks_updated)
             except RuntimeError:
-                Log.write("Couldn't remove device listener")
+                Log.warn("Couldn't remove device listener")
 
 
     @classmethod
@@ -56,39 +57,27 @@ class PyroSong(PyroWrapper):
     # --------
     @staticmethod
     def build_song_layout(args):
-        Log.write("Inside JSON track formatter")
+        song = None
+        try:
+            # Use the first song available.
+            song = PyroSong.instances()[0]
+        except Exception, e:
+            Log.warn("Couldn't get song wrapper. " + str(e))
 
-        trackgroup = None
+        if song:
+            try:
+                tracks = song.tracks_to_object(song.handle().tracks)
+                song.update(PyroSong.SONG_LAYOUT, tracks)
+            except Exception, e:
+                Log.error("Failed to build track list. " + str(e))
 
-        if("category" in args):
-            Log.write("Category is " + str(args["category"]))
-
-            if int(args["category"]) == 0:
-                trackgroup = handle().tracks
-            elif int(args["category"]) == 1:
-                trackgroup = handle().return_tracks
-
-            if(trackgroup):
-                Log.write("Trackgroup is " + str(trackgroup))
-                tracks = self.tracks_to_object(trackgroup)
-                Log.write(tracks)
-            else:
-                tracks = {"error" : "Category argument out of range"}
-        else:
-            tracks = {"error" : "Category argument missing"}
-
-        PyroSong.findById(args["id"]).update(PyroSong.SONG_LAYOUT, tracks)
-
-    # ---------
-    # Utilities
-    # ---------
 
     # ---------
     # Hierarchy
     def update_hierarchy(self):
-        Log.write("Track list changed")
+        Log.info("Track list changed")
         PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().tracks)
-        # PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().return_tracks)
+        PyroWrapper.update_hierarchy(self, PyroReturnTrack, self.handle().return_tracks)
 
     def tracks_to_object(self, trackgroup):
         tracks = {"tracklist":[]}
@@ -120,13 +109,11 @@ class PyroSong(PyroWrapper):
                     "midi": track.has_midi_input,
                     "parameters": []}
             except:
-                return "!!! Error parsing track"
+                Log.error("Error parsing track")
+                return
 
             for deviceindex, device in enumerate(track.devices):
-
                 for parameterindex, parameter in enumerate(device.parameters):
-                    self.log_message("Parsing param " + str(parameter.name))
-
                     try:
                         paramObj = {
                             "trackindex": trackindex,
@@ -138,7 +125,9 @@ class PyroSong(PyroWrapper):
                             "name": parameter.name
                         }
                     except:
-                        return "!!! Error parsing parameter"
+                        Log.error("Error parsing parameter")
+                        return
+
                     trackObj["parameters"].append(paramObj)
             tracks["tracklist"].append(trackObj)
         return tracks

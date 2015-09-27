@@ -5,27 +5,6 @@ from PyroDeviceParameter import PyroDeviceParameter
 class PyroDevice(PyroWrapper):
     # Message types
     DEVICE_UPDATED = "device_parameters_updated"
-
-    # @classmethod
-    # def remove_child_wrappers(cls, livevector):
-    #     pass
-        # idlist = [PyroWrapper.get_id_from_name(handle.name) for handle in livevector]
-        # for wrapper in cls.instances():
-        #     if wrapper.id() not in idlist:
-        #         Log.write("==============")
-        #         Log.write(str(wrapper.id()) + " handle is missing in Live. Removing!")
-        #         Log.write("Wrappers: ")
-        #         for i in cls.instances():
-        #             Log.write(i.id())
-        #         Log.write("Live:")
-        #         for i in idlist:
-        #             Log.write(i)
-        #         wrapper.destroy()
-        #         Log.write("--------------")
-        #         Log.write("")
-
-        # super(PyroDevice, cls).remove_child_wrappers(livevector)
-
     
     # -------------------
     # Wrapper definitions
@@ -41,7 +20,7 @@ class PyroDevice(PyroWrapper):
             try:
                 self.handle().remove_parameters_listener(self.parameters_updated)
             except RuntimeError:
-                Log.write("Couldn't remove device listener")
+                Log.warn("Couldn't remove device listener")
 
     @classmethod
     def register_methods(cls):
@@ -62,5 +41,5 @@ class PyroDevice(PyroWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
-        Log.write("Parameter list changed")
+        Log.info("Parameter list changed")
         PyroWrapper.update_hierarchy(self, PyroDeviceParameter, self.handle().parameters)

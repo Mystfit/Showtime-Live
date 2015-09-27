@@ -24,7 +24,7 @@ try:
     from _Framework.Debug import debug_print
 except ImportError, e:
     from Logger import Log
-    Log.write("Live library not available!")
+    Log.warn("Live library not available!")
 
 def getSong():
     """Gets a the current Song instance"""

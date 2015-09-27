@@ -20,7 +20,7 @@ class PyroSend(PyroWrapper):
             try:
                 self.handle().remove_value_listener(self.send_updated)
             except RuntimeError:
-                Log.write("Couldn't remove send listener")
+                Log.warn("Couldn't remove send listener")
 
     @classmethod
     def register_methods(cls):
@@ -32,7 +32,12 @@ class PyroSend(PyroWrapper):
     # --------
     @staticmethod
     def send_set(args):
-        PyroSend.findById(args["id"]).handle().value = float(args["value"])
+        instance = PyroSend.findById(args["id"])
+        instance.defer_action(instance.apply_send_value, args["value"])
+
+    def apply_param_value(self, value):
+        Log.info("Val:" + value + " on " + str(self))
+        self.handle().value = float(value)
 
     # --------
     # Outgoing

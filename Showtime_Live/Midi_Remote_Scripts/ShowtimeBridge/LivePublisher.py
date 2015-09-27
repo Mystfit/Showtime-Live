@@ -21,17 +21,16 @@ class LivePublisher(Publisher):
         args = args if args else {}
         retries = 5
         success = False
-        Log.write("Publishing message " + str(message))
+        Log.info("Publishing message " + str(message))
 
         while retries > 0:
             try:
                 self.publish(message, args)
                 success = True
-                Log.write("Success!")
             except Pyro.errors.ConnectionClosedError, e:
-                Log.write(e)
-                Log.write(
-                    "Rebinding. {0} retries left.".format(str(retries)))
+                Log.error(e)
+                Log.error(
+                    "Rebinding to server. {0} retries left.".format(str(retries)))
                 self.adapter.rebindURI()
                 retries -= 1
             if success:

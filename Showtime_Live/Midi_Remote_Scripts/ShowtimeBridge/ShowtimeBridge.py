@@ -1,10 +1,6 @@
 from __future__ import with_statement
 
-# Append Pyro and missing standard python scripts to the path
 import sys
-#sys.path.append("/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5")
-#sys.path.append("/System/Library/Frameworks/Python.framework/Versions/2.5/lib/python2.5/lib-dynload")
-
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 
@@ -47,8 +43,10 @@ class ShowtimeBridge(ControlSurface):
             self._suppress_send_midi = True
 
             Log.set_logger(self.log_message)
-            Log.write("--------------------")
-            Log.write("ShowtimeBridge START")
+            Log.set_log_level(Log.LOG_INFO)
+            Log.write("-----------------------")
+            Log.write("ShowtimeBridge starting")
+            Log.info(sys.version)
 
             self.initPyroServer()
 
@@ -57,18 +55,20 @@ class ShowtimeBridge(ControlSurface):
                 cls.clear_instances()
                 cls.register_methods()
                 for action in cls.incoming_methods().values():
-                    Log.write("Adding " + str(action) + " to incoming callbacks")
+                    Log.info("Adding " + str(action) + " to incoming callbacks")
                     self.subscriber.add_incoming_action(action.methodName, cls, action.callback)
                     self.publisher.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
 
                 for action in cls.outgoing_methods().values():
-                    Log.write("Adding " + str(action) + " to outgoing methods")
+                    Log.info("Adding " + str(action) + " to outgoing methods")
                     self.publisher.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check
             self.clock = PyroEncoderElement(0, 119)
 
-            self.build_wrappers()
+            # Create the root wrapper
+            PyroSong.add_instance(PyroSong(getSong()))
+
             self.refresh_state()
             self._suppress_send_midi = False
 
@@ -85,38 +85,6 @@ class ShowtimeBridge(ControlSurface):
         # Set the global publisher for all wrappers
         PyroWrapper.set_publisher(self.publisher)
 
-    def build_wrappers(self):
-        # Song
-        songWrapper = PyroSong.add_instance(PyroSong(getSong()))
-       
-        # Tracks
-        # for trackindex, track in enumerate(songWrapper.handle().tracks):
-        #     trackWrapper = PyroTrack.add_instance(PyroTrack(trackindex, track, self))
-
-        #     # Devices
-        #     for deviceindex, device in enumerate(track.devices):
-        #         deviceWrapper = PyroDevice.add_instance(PyroDevice(deviceindex, device, trackWrapper))
-
-        #         # Device parameters
-        #         for parameterindex, param in enumerate(device.parameters):
-        #             PyroDeviceParameter.add_instance(PyroDeviceParameter(parameterindex, param, deviceWrapper))
-
-            # # Sends
-            # for sendindex, send in enumerate(trackWrapper.handle().mixer_device.sends):
-            #     sendParamWrapper = PyroSendVolume(sendindex, send, trackWrapper)
-
-        # Return tracks
-        # for returntrackindex, returntrack in enumerate(self.handle().return_tracks):
-        #     returnTrackWrapper = PyroReturn(returntrackindex, returntrack, self)
-
-        #     # Return devices
-        #     for deviceindex, device in enumerate(returntrack.devices):
-        #         deviceWrapper = PyroDevice(deviceindex, device, returnTrackWrapper)
-
-        #         # Return parameters
-        #         for parameterindex, parameter in enumerate(device.parameters):
-        #             parameterWrapper = PyroDeviceParameter(parameterindex, parameter, deviceWrapper)
-
     def disconnect(self):
         self._suppress_send_midi = True
         self._suppress_send_midi = False
@@ -127,7 +95,7 @@ class ShowtimeBridge(ControlSurface):
         self.request_rebuild_midi_map()
 
     def build_midi_map(self, midi_map_handle):
-        Log.write("Building midi map...")
+        Log.info("Building midi map...")
         ControlSurface.build_midi_map(self, midi_map_handle)
 
     def receive_midi(self, midi_bytes):

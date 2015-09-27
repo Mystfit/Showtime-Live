@@ -1,5 +1,6 @@
 from PyroWrapper import *
 from PyroDevice import PyroDevice
+from PyroSend import PyroSend
 
 
 class PyroTrack(PyroWrapper):
@@ -21,7 +22,7 @@ class PyroTrack(PyroWrapper):
                 self.handle().add_playing_slot_index_listener(self.playing_slot_index)
                 self.handle().add_devices_listener(self.update_hierarchy)
             except:
-                Log.write("Couldn't add listeners to track")
+                Log.warn("Couldn't add listeners to track")
 
     def destroy_listeners(self):
         PyroWrapper.destroy_listeners(self)
@@ -30,7 +31,7 @@ class PyroTrack(PyroWrapper):
             self.handle().remove_playing_slot_index_listener(self.playing_slot_index)
             self.handle().remove_devices_listener(self.update_hierarchy)    
         else:
-            Log.write("Handle is gone. Can't remove listeners.")   
+            Log.warn("Handle is gone. Can't remove listeners.")   
         
     @classmethod
     def register_methods(cls):
@@ -49,7 +50,7 @@ class PyroTrack(PyroWrapper):
         try:
             track.clip_slots[int(args["clipindex"])].fire()
         except AttributeError:
-            Log.write("No clip slots in track")
+            Log.warn("No clip slots in track")
 
     @staticmethod
     def stop_track(args):
@@ -57,7 +58,7 @@ class PyroTrack(PyroWrapper):
         try:
             track.stop_all_clips()
         except AttributeError:
-            Log.write("No clip slots in track")
+            Log.warn("No clip slots in track")
 
     # --------
     # Outgoing
@@ -82,5 +83,5 @@ class PyroTrack(PyroWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
-        Log.write("Device list changed")
+        Log.info("Device list changed")
         PyroWrapper.update_hierarchy(self, PyroDevice, self.handle().devices)

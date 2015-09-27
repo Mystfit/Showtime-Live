@@ -39,7 +39,6 @@ class RegistrationThread(threading.Thread):
         self.join(2)
 
 class LiveRouter(Subscriber):
-
     def __init__(self, stageaddress, midiportindex):
         Subscriber.__init__(self)
         self.setThreading(True)
@@ -92,18 +91,21 @@ class LiveRouter(Subscriber):
                 self.midiRouter.play_midi_note)
 
     def event(self, event):
-        print "IN-->OUT: " + event.subject, '=', event.msg
         methodName = event.subject[2:]
         pyroType = event.subject[:1]
 
         if pyroType == PyroPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
-        elif methodName in self.node.methods:
-            self.node.update_local_method_by_name(methodName, event.msg)
-        else:
-            print "Outgoing method not registered!"
+        # elif pyroType == PyroPrefixes.PASSTHROUGH:
+        #     print "Passthrough: " + methodName
+        elif pyroType == PyroPrefixes.OUTGOING:
+            print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
+            if methodName in self.node.methods:
+                self.node.update_local_method_by_name(methodName, event.msg)
+            else:
+                print "Outgoing method not registered!"
 
     def incoming(self, message):
-        print "Publishing message " + message.name
+        print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
         self.publisher.send_to_live(message.name, args)

@@ -1,7 +1,5 @@
-# from .. import LiveUtils
-# from .. import PyroShared
-from ..Logger import Log
 import re
+from ..Logger import Log
 
 
 class PyroWrapper(object):
@@ -57,11 +55,8 @@ class PyroWrapper(object):
             child.destroy()
         self._children.clear()
         self.destroy_listeners()
-
         del self.__class__._instances[self.id()]
         
-        # Log.write("Couldn't find wrapper " + str(self.id()) + " in instance list")
-
     def create_listeners(self):
         """Create all listeners for this object"""
         if self.handle():
@@ -97,36 +92,32 @@ class PyroWrapper(object):
     @classmethod
     def create_child_wrappers(cls, parent, livevector):
         """Create missing child wrappers underneath this wrapper"""
-        Log.write("Creating child wrappers underneath " + str(parent))
+        Log.info("Creating child wrappers underneath " + str(parent))
         for index, handle in enumerate(livevector):
-            # Log.write("Index is " + str(index) + ". Handle is " + str(handle))
             wrapper = cls.find_wrapper_by_handle(handle)
 
             if not wrapper:
                 cls.add_instance(cls(handle, index, parent))
-                Log.write(str(cls) + " added a new instance")
+                Log.info(str(cls) + " added a new instance")
             else:
-                Log.write(str(wrapper.id()) + " already has a wrapper")
+                Log.warn(str(wrapper.id()) + " already has a wrapper")
 
     @classmethod
     def remove_child_wrappers(cls, livevector):
         """Remove wrappers that are missing a live object"""
         idlist = [PyroWrapper.get_id_from_name(handle.name) for handle in livevector]
         for wrapper in cls.instances():
-            # Log.write(wrapperId)
-            # Log.write(idlist)
             if wrapper.id() not in idlist:
-                Log.write("==============")
-                Log.write(str(wrapper.id()) + " handle is missing in Live. Removing!")
-                Log.write("Wrappers: ")
+                Log.info("--------------\n")
+                Log.info(str(wrapper.id()) + " handle is missing in Live. Removing!")
+                Log.info("Wrappers: ")
                 for i in cls.instances():
-                    Log.write(i.id())
-                Log.write("Live:")
+                    Log.info(i.id())
+                Log.info("Live:")
                 for i in idlist:
-                    Log.write(i)
+                    Log.info(i)
                 wrapper.destroy()
-                Log.write("--------------")
-                Log.write("")
+                Log.info("--------------\n")
     
     def add_child(self, child):
         """Add a child wrapper to this wrapper
@@ -180,7 +171,7 @@ class PyroWrapper(object):
     def add_outgoing_method(cls, methodname):
         """Registers a method for this wrapper that will publish to the network"""
         if methodname in cls._outgoing_methods:
-            Log.write("Outgoing method aready exists")
+            Log.warn("Outgoing method aready exists")
             return
 
         cls._outgoing_methods[methodname] = PyroMethodDef(methodname, PyroWrapper.METHOD_READ)
@@ -189,10 +180,17 @@ class PyroWrapper(object):
     def add_incoming_method(cls, methodname, methodargs, callback, isResponder=False):
         """Registers method for this wrapper that will receive events from the network"""
         if methodname in cls._incoming_methods:
-            Log.write("Incoming method aready exists")
+            Log.warn("Incoming method aready exists")
+
+        # !!!STOPGAP!!!
+        # Convert method arg arrays to key/value pairs. Needs to be fixed in Showtime instead of here!
+        methodargkeys = {}
+        if methodargs:
+            for key in methodargs:
+                methodargkeys[key] = None
 
         accessType = PyroWrapper.METHOD_RESPOND if isResponder else PyroWrapper.METHOD_WRITE
-        cls._incoming_methods[methodname] = PyroMethodDef(methodname, accessType, methodargs, callback)
+        cls._incoming_methods[methodname] = PyroMethodDef(methodname, accessType, methodargkeys, callback)
 
 
     # Network
@@ -244,10 +242,10 @@ class PyroWrapper(object):
     @staticmethod
     def set_handle_name(instance, name):
         try:
-            Log.write("Setting name to " + name)
+            Log.info("Setting name to " + name)
             instance.handle().name = name
         except AttributeError:
-            Log.write("Skipping " + name)
+            Log.warn("Skipping " + name)
 
     def id_updated(self):
         """Update the stored id if the name in ableton has changed"""

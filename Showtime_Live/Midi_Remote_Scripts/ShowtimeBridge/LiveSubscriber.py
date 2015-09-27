@@ -35,7 +35,7 @@ class LiveSubscriber(Subscriber):
             requestCounter += 1
         self.requestLock = True
         if requestCounter > 10:
-            Log.write(str(requestCounter) + " loops to clear queue")
+            Log.warn(str(requestCounter) + " loops to clear queue")
 
         # Apply all wrapper values that have been queued
         for cls in PyroWrapper.__subclasses__():
@@ -43,6 +43,6 @@ class LiveSubscriber(Subscriber):
 
     def event(self, event):
         self.requestLock = True     # Lock the request loop
-        Log.write("Received method " + event.subject[2:])
-        Log.write("Args are:" + str(event.msg)) 
+        Log.info("Received method " + event.subject[2:])
+        Log.info("Args are:" + str(event.msg)) 
         self.incomingSubscriptions[event.subject]["function"](event.msg)
