@@ -96,9 +96,7 @@ class LiveRouter(Subscriber):
 
         if pyroType == PyroPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
-        # elif pyroType == PyroPrefixes.PASSTHROUGH:
-        #     print "Passthrough: " + methodName
-        elif pyroType == PyroPrefixes.OUTGOING:
+        elif pyroType == PyroPrefixes.OUTGOING or pyroType == PyroPrefixes.RESPONDER:
             print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)

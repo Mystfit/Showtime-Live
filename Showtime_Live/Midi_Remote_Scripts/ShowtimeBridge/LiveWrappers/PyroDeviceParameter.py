@@ -36,6 +36,15 @@ class PyroDeviceParameter(PyroWrapper):
             PyroDeviceParameter.PARAM_SET_VALUE, ["id", "value"],
             PyroDeviceParameter.set_value)
 
+    def toObject(self):
+        params = {
+            "value": self.handle().value,
+            "min": self.handle().min,
+            "max": self.handle().max,
+        }
+        return PyroWrapper.toObject(self, params)
+        
+
     # --------
     # Incoming
     # --------

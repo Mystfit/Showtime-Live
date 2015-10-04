@@ -34,8 +34,8 @@ class PyroWrapper(object):
         self._handle = handle
         self._children = set()
         
+        self._parent = parent
         if parent:
-            self._parent = parent
             self._parent.add_child(self)
         
         self.handleindex = handleindex
@@ -49,13 +49,17 @@ class PyroWrapper(object):
 
     # Cleanup
     # -------
-    def destroy(self):
-        """Destructor for this wrapper"""
-        for child in self._children:
-            child.destroy()
-        self._children.clear()
-        self.destroy_listeners()
-        del self.__class__._instances[self.id()]
+    @staticmethod
+    def destroy(wrapper):
+        """Destroy a wrapper"""
+        for child in wrapper._children:
+            PyroWrapper.destroy(child)
+        wrapper._children.clear()
+        wrapper.destroy_listeners()
+        try:
+            del wrapper.__class__._instances[wrapper.id()]
+        except KeyError:
+            Log.warn("%s missing. Already deleted." % wrapper.id())
         
     def create_listeners(self):
         """Create all listeners for this object"""
@@ -95,7 +99,6 @@ class PyroWrapper(object):
         Log.info("Creating child wrappers underneath " + str(parent))
         for index, handle in enumerate(livevector):
             wrapper = cls.find_wrapper_by_handle(handle)
-
             if not wrapper:
                 cls.add_instance(cls(handle, index, parent))
                 Log.info(str(cls) + " added a new instance")
@@ -108,16 +111,8 @@ class PyroWrapper(object):
         idlist = [PyroWrapper.get_id_from_name(handle.name) for handle in livevector]
         for wrapper in cls.instances():
             if wrapper.id() not in idlist:
-                Log.info("--------------\n")
                 Log.info(str(wrapper.id()) + " handle is missing in Live. Removing!")
-                Log.info("Wrappers: ")
-                for i in cls.instances():
-                    Log.info(i.id())
-                Log.info("Live:")
-                for i in idlist:
-                    Log.info(i)
-                wrapper.destroy()
-                Log.info("--------------\n")
+                PyroWrapper.destroy(wrapper)
     
     def add_child(self, child):
         """Add a child wrapper to this wrapper
@@ -232,6 +227,11 @@ class PyroWrapper(object):
         val = {"val": values, "id": self.id()}
         PyroWrapper._publisher.send_to_showtime(action, val)
 
+    def respond(self, action, values):
+        """Send the updated wrapper value to the network"""
+        val = {"val": values, "id": self.id()}
+        PyroWrapper._publisher.send_to_showtime(action, val, True)
+
 
     # ID methods
     # ----------
@@ -286,10 +286,25 @@ class PyroWrapper(object):
     @staticmethod
     def get_id_from_name(name):
         """Split a handle name into name and id"""
-        search = re.search('(?<=' + PyroWrapper.ID_DELIM[0] + '\\' + PyroWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
-        if search:
-            return search.group(0)
-        return None
+        idStr = re.search('(?<=' + PyroWrapper.ID_DELIM[0] + '\\' + PyroWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
+        return idStr.group(0) if idStr else None
+
+    @staticmethod 
+    def get_real_name_from_handle_name(name):
+        nameStr = re.search('^.*(?=' + PyroWrapper.ID_DELIM[0] + ')', name)
+        return nameStr.group(0) if nameStr else name
+
+    def toObject(self, params=None):
+        """Converts this wrapper to an object representation"""
+        params = params if params else {}
+        params.update({
+            "id": self.id(),
+            "type": self.__class__.__name__,
+            "name": PyroWrapper.get_real_name_from_handle_name(self.handle().name),
+            "parent": self.parent().id() if self.parent() else None,
+            "index": self.handleindex
+        })
+        return params
 
 class PyroMethodDef:
     def __init__(self, methodname, methodAccess, methodargs=None, callback=None):

@@ -3,6 +3,7 @@
 class PyroPrefixes:
     INCOMING = "I"
     OUTGOING = "O"
+    RESPONDER = "L"
     # PASSTHROUGH = "P"
     REGISTRATION = "R"
     DELIMITER = "_"
@@ -14,6 +15,10 @@ class PyroPrefixes:
     @staticmethod
     def prefix_incoming(name):
         return PyroPrefixes.INCOMING + PyroPrefixes.prefix_name(name)
+
+    @staticmethod
+    def prefix_responder(name):
+        return PyroPrefixes.RESPONDER + PyroPrefixes.prefix_name(name)
     
     # @staticmethod
     # def prefix_passthrough(name):

@@ -1,7 +1,6 @@
 from PyroWrapper import *
 from PyroTrack import PyroTrack
-from PyroReturnTrack import PyroReturnTrack
-
+import itertools
 
 class PyroSong(PyroWrapper):
     # Message types
@@ -16,8 +15,8 @@ class PyroSong(PyroWrapper):
         PyroWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_current_song_time_listener(self.song_time_updated)
-            self.handle().add_tracks_listener(self.song_tracks_updated)
-            self.handle().add_return_tracks_listener(self.song_tracks_updated)
+            self.handle().add_tracks_listener(self.update_hierarchy)
+            self.handle().add_return_tracks_listener(self.update_hierarchy)
 
 
     def destroy_listeners(self):
@@ -25,8 +24,8 @@ class PyroSong(PyroWrapper):
         if self.handle():
             try:
                 self.handle().remove_current_song_time_listener(self.song_time_updated)
-                self.handle().remove_tracks_listener(self.song_tracks_updated)
-                self.handle().remove_return_tracks_listener(self.song_tracks_updated)
+                self.handle().remove_tracks_listener(self.update_hierarchy)
+                self.handle().remove_return_tracks_listener(self.update_hierarchy)
             except RuntimeError:
                 Log.warn("Couldn't remove device listener")
 
@@ -49,14 +48,12 @@ class PyroSong(PyroWrapper):
                 meterLevels.append(track.handle().output_meter_level)
         self.update(PyroSong.SONG_METERS, meterLevels)
 
-    def song_tracks_updated(self, *args):
-        self.update_hierarchy()
-
     # --------
     # Incoming
     # --------
     @staticmethod
     def build_song_layout(args):
+        Log.info("Returning song layout")
         song = None
         try:
             # Use the first song available.
@@ -64,20 +61,26 @@ class PyroSong(PyroWrapper):
         except Exception, e:
             Log.warn("Couldn't get song wrapper. " + str(e))
 
-        if song:
-            try:
-                tracks = song.tracks_to_object(song.handle().tracks)
-                song.update(PyroSong.SONG_LAYOUT, tracks)
-            except Exception, e:
-                Log.error("Failed to build track list. " + str(e))
+        wrappers = []
+        try:
+            for cls in PyroWrapper.__subclasses__():
+                Log.info("Converting %s instances to objects" % cls.__name__)
+                for instance in cls.instances():
+                    wrappers.append(instance.toObject())
+                    Log.info(instance.toObject())
+        except:
+            Log.error("Couldn't build song list")
+        
+        song.respond(PyroSong.SONG_LAYOUT, wrappers)
 
 
     # ---------
     # Hierarchy
+
     def update_hierarchy(self):
         Log.info("Track list changed")
-        PyroWrapper.update_hierarchy(self, PyroTrack, self.handle().tracks)
-        PyroWrapper.update_hierarchy(self, PyroReturnTrack, self.handle().return_tracks)
+        tracks = list(itertools.chain(self.handle().tracks, self.handle().return_tracks))
+        PyroWrapper.update_hierarchy(self, PyroTrack, tracks)
 
     def tracks_to_object(self, trackgroup):
         tracks = {"tracklist":[]}

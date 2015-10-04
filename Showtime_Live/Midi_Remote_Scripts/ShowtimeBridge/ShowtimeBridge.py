@@ -55,12 +55,12 @@ class ShowtimeBridge(ControlSurface):
                 cls.clear_instances()
                 cls.register_methods()
                 for action in cls.incoming_methods().values():
-                    Log.info("Adding " + str(action) + " to incoming callbacks")
+                    Log.info("Adding %s to incoming callbacks" % action.methodName)
                     self.subscriber.add_incoming_action(action.methodName, cls, action.callback)
                     self.publisher.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
 
                 for action in cls.outgoing_methods().values():
-                    Log.info("Adding " + str(action) + " to outgoing methods")
+                    Log.info("Adding %s to outgoing methods" % action.methodName)
                     self.publisher.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check

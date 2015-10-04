@@ -8,7 +8,9 @@ from Logger import Log
 
 class LivePublisher(Publisher):
 
-    def send_to_showtime(self, message, args):
+    def send_to_showtime(self, message, args, responding=False):
+        if responding:
+            return self.send_message(PyroPrefixes.prefix_responder(message), args)
         return self.send_message(PyroPrefixes.prefix_outgoing(message), args)
 
     def send_to_live(self, message, args):

@@ -16,20 +16,28 @@ class PyroTrack(PyroWrapper):
     # -------------------
     def create_listeners(self):
         PyroWrapper.create_listeners(self)
+        Log.info("Creating track listeners")
         if self.handle():
             try:
                 self.handle().add_fired_slot_index_listener(self.fired_slot_index)
                 self.handle().add_playing_slot_index_listener(self.playing_slot_index)
-                self.handle().add_devices_listener(self.update_hierarchy)
             except:
                 Log.warn("Couldn't add listeners to track")
+            self.handle().add_devices_listener(self.update_hierarchy)
+
+        else:
+            Log.warn("Track handle doesn't exit yet")
 
     def destroy_listeners(self):
         PyroWrapper.destroy_listeners(self)
         if self.handle():
-            self.handle().remove_fired_slot_index_listener(self.fired_slot_index)
-            self.handle().remove_playing_slot_index_listener(self.playing_slot_index)
+            try:
+                self.handle().remove_fired_slot_index_listener(self.fired_slot_index)
+                self.handle().remove_playing_slot_index_listener(self.playing_slot_index)
+            except:
+                Log.warn("Track doesn't have these listeners")
             self.handle().remove_devices_listener(self.update_hierarchy)    
+
         else:
             Log.warn("Handle is gone. Can't remove listeners.")   
         
@@ -40,6 +48,16 @@ class PyroTrack(PyroWrapper):
         PyroWrapper.add_outgoing_method(PyroTrack.TRACK_PLAYING_SLOT)
         PyroWrapper.add_incoming_method(PyroTrack.TRACK_FIRE_SLOT_INDEX, ["id", "clipindex"], PyroTrack.fire_slot_index)
         PyroWrapper.add_incoming_method(PyroTrack.TRACK_STOP, ["id"], PyroTrack.stop_track)
+
+    def toObject(self):
+        params = {
+            "armed": (self.handle().arm if self.handle().can_be_armed else False),
+            "solo": self.handle().solo,
+            "color": self.handle().color,
+            "mute": self.handle().mute,
+            "midi": self.handle().has_midi_input,
+        }
+        return PyroWrapper.toObject(self, params)
 
     # --------
     # Incoming
