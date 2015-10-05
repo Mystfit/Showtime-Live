@@ -49,7 +49,7 @@ class PyroTrack(PyroWrapper):
         PyroWrapper.add_incoming_method(PyroTrack.TRACK_FIRE_SLOT_INDEX, ["id", "clipindex"], PyroTrack.fire_slot_index)
         PyroWrapper.add_incoming_method(PyroTrack.TRACK_STOP, ["id"], PyroTrack.stop_track)
 
-    def toObject(self):
+    def to_object(self):
         params = {
             "armed": (self.handle().arm if self.handle().can_be_armed else False),
             "solo": self.handle().solo,
@@ -64,7 +64,7 @@ class PyroTrack(PyroWrapper):
     # --------
     @staticmethod
     def fire_slot_index(args):
-        track = PyroTrack.findById(args["id"]).handle()
+        track = PyroTrack.find_wrapper_by_id(args["id"]).handle()
         try:
             track.clip_slots[int(args["clipindex"])].fire()
         except AttributeError:
@@ -72,7 +72,7 @@ class PyroTrack(PyroWrapper):
 
     @staticmethod
     def stop_track(args):
-        track = PyroTrack.findById(args["id"]).handle()
+        track = PyroTrack.find_wrapper_by_id(args["id"]).handle()
         try:
             track.stop_all_clips()
         except AttributeError:

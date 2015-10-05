@@ -2,7 +2,6 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 
 from Pyro.EventService.Clients import Subscriber
-from LiveWrappers.PyroWrapper import PyroWrapper
 from PyroShared import PyroPrefixes
 from Logger import Log
 
@@ -36,10 +35,6 @@ class LiveSubscriber(Subscriber):
         self.requestLock = True
         if requestCounter > 10:
             Log.warn(str(requestCounter) + " loops to clear queue")
-
-        # Apply all wrapper values that have been queued
-        for cls in PyroWrapper.__subclasses__():
-            cls.process_deferred_actions()
 
     def event(self, event):
         self.requestLock = True     # Lock the request loop

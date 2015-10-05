@@ -32,7 +32,7 @@ class PyroSend(PyroWrapper):
     # --------
     @staticmethod
     def send_set(args):
-        instance = PyroSend.findById(args["id"])
+        instance = PyroSend.find_wrapper_by_id(args["id"])
         instance.defer_action(instance.apply_send_value, args["value"])
 
     def apply_param_value(self, value):

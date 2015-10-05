@@ -66,8 +66,7 @@ class PyroSong(PyroWrapper):
             for cls in PyroWrapper.__subclasses__():
                 Log.info("Converting %s instances to objects" % cls.__name__)
                 for instance in cls.instances():
-                    wrappers.append(instance.toObject())
-                    Log.info(instance.toObject())
+                    wrappers.append(instance.to_object())
         except:
             Log.error("Couldn't build song list")
         

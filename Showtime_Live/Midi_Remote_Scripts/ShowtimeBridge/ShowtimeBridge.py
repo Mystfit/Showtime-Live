@@ -114,3 +114,4 @@ class ShowtimeBridge(ControlSurface):
 
     def requestLoop(self):
         self.subscriber.handle_requests()
+        PyroWrapper.process_deferred_actions()

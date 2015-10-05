@@ -24,7 +24,7 @@ class PyroWrapper(object):
     _publisher = None
 
     # Queued wrapper events
-    _deferred_actions = []
+    _deferred_actions = {}
 
     # Total ID count
     _id_counter = long(0)
@@ -90,7 +90,8 @@ class PyroWrapper(object):
     def update_hierarchy(self, cls=None, livevector=None):
         """Refreshes the hierarchy of wrappers underneath this wrapper"""
         if cls and livevector:
-            cls.remove_child_wrappers(livevector)
+            parentId = self.parent().id() if self.parent() else None
+            cls.remove_child_wrappers(livevector, parentId)
             cls.create_child_wrappers(self, livevector)
 
     @classmethod
@@ -106,10 +107,14 @@ class PyroWrapper(object):
                 Log.warn(str(wrapper.id()) + " already has a wrapper")
 
     @classmethod
-    def remove_child_wrappers(cls, livevector):
+    def remove_child_wrappers(cls, livevector, idfilter=None):
         """Remove wrappers that are missing a live object"""
         idlist = [PyroWrapper.get_id_from_name(handle.name) for handle in livevector]
-        for wrapper in cls.instances():
+        instances = cls.instances()
+        if idfilter:
+            instances = [i for i in cls.instances() if i.parent().id() == idfilter]
+
+        for wrapper in instances:
             if wrapper.id() not in idlist:
                 Log.info(str(wrapper.id()) + " handle is missing in Live. Removing!")
                 PyroWrapper.destroy(wrapper)
@@ -210,17 +215,23 @@ class PyroWrapper(object):
         """Registered outgoing methods"""
         return cls._outgoing_methods
 
-    @classmethod
-    def process_deferred_actions(cls):
+    @staticmethod
+    def process_deferred_actions():
         """Process all queued messages for wrappers that need to 
         be applied post-eventloop
         """
-        for deferred in cls._deferred_actions:
-            deferred[0](deferred[1], deferred[2])
-        PyroWrapper._deferred_actions[:] = []
+        if len(PyroWrapper._deferred_actions.keys()) > 0:
+            for callback, action in PyroWrapper._deferred_actions.iteritems():
+                Log.info("Calling deferred action %s" % callback)
+                try:
+                    callback(action[1])
+                except Exception, e:
+                    Log.error("Couldn't run deferred action. %s" % e)
+            PyroWrapper._deferred_actions.clear()
 
     def defer_action(self, method, argument):
-        PyroWrapper._deferred_actions.append([method, self, argument])
+        PyroWrapper._deferred_actions[method] = (self, argument)
+        Log.info(PyroWrapper._deferred_actions)
 
     def update(self, action, values):
         """Send the updated wrapper value to the network"""
@@ -239,11 +250,10 @@ class PyroWrapper(object):
         """Return the id of this wrapper"""
         return self._id
 
-    @staticmethod
-    def set_handle_name(instance, name):
+    def set_handle_name(self, name):
         try:
             Log.info("Setting name to " + name)
-            instance.handle().name = name
+            self.handle().name = name
         except AttributeError:
             Log.warn("Skipping " + name)
 
@@ -251,6 +261,13 @@ class PyroWrapper(object):
         """Update the stored id if the name in ableton has changed"""
         # self._id = self.create_handle_id()
         self.update_hierarchy()
+
+    @classmethod
+    def find_wrapper_by_id(cls, wrapperId):
+        try:
+            return cls._instances[wrapperId]
+        except KeyError:
+            return None
 
     def create_handle_id(self):
         """Create a new ID in memory from the handle name"""
@@ -294,7 +311,7 @@ class PyroWrapper(object):
         nameStr = re.search('^.*(?=' + PyroWrapper.ID_DELIM[0] + ')', name)
         return nameStr.group(0) if nameStr else name
 
-    def toObject(self, params=None):
+    def to_object(self, params=None):
         """Converts this wrapper to an object representation"""
         params = params if params else {}
         params.update({

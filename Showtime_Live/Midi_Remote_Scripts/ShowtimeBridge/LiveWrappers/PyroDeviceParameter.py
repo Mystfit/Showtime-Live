@@ -1,4 +1,5 @@
 from PyroWrapper import *
+from ..Utils import Utils
 
 
 class PyroDeviceParameter(PyroWrapper):
@@ -36,7 +37,7 @@ class PyroDeviceParameter(PyroWrapper):
             PyroDeviceParameter.PARAM_SET_VALUE, ["id", "value"],
             PyroDeviceParameter.set_value)
 
-    def toObject(self):
+    def to_object(self):
         params = {
             "value": self.handle().value,
             "min": self.handle().min,
@@ -50,12 +51,15 @@ class PyroDeviceParameter(PyroWrapper):
     # --------
     @staticmethod
     def set_value(args):
-        instance = PyroDeviceParameter.findById(args["id"])
-        instance.defer_action(instance.apply_param_value, args["value"])
+        instance = PyroDeviceParameter.find_wrapper_by_id(args["id"])
+        if instance:
+            instance.defer_action(instance.apply_param_value, args["value"])
+        else:
+            Log.warn("Could not find DeviceParameter %s " % instance.name)
 
     def apply_param_value(self, value):
-        self.handle().value = float(value)
-        Log.info("Val:" + value + " on " + str(self))
+        self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(value))
+        Log.info("Val:%s on %s" % (self.handle().value, self.id()))
 
     # --------
     # Outgoing
