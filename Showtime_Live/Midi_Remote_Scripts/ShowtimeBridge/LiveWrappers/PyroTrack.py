@@ -1,6 +1,7 @@
 from PyroWrapper import *
 from PyroDevice import PyroDevice
 from PyroSend import PyroSend
+from PyroMixer import PyroMixer
 
 
 class PyroTrack(PyroWrapper):
@@ -57,7 +58,7 @@ class PyroTrack(PyroWrapper):
             "mute": self.handle().mute,
             "midi": self.handle().has_midi_input,
         }
-        return PyroWrapper.toObject(self, params)
+        return PyroWrapper.to_object(self, params)
 
     # --------
     # Incoming
@@ -103,3 +104,6 @@ class PyroTrack(PyroWrapper):
     def update_hierarchy(self):   
         Log.info("Device list changed")
         PyroWrapper.update_hierarchy(self, PyroDevice, self.handle().devices)
+
+        # Each track only contains one mixer so we can skip the hierarchy
+        PyroMixer.add_instance(PyroMixer(self.handle().mixer_device, 0, self))

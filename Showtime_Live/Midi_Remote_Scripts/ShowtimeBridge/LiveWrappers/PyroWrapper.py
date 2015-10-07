@@ -11,7 +11,7 @@ class PyroWrapper(object):
     # Delimiter for handle name id's in Live
     ID_DELIM = "-{"
     ID_END = "}"
-    ID_NULL = "null"
+    ID_NULL = "no_name"
 
     # Class method references
     _incoming_methods = {}
@@ -120,8 +120,7 @@ class PyroWrapper(object):
                 PyroWrapper.destroy(wrapper)
     
     def add_child(self, child):
-        """Add a child wrapper to this wrapper
-        """
+        """Add a child wrapper to this wrapper"""
         self._children.add(child)
     
     def children(self):
@@ -231,9 +230,8 @@ class PyroWrapper(object):
 
     def defer_action(self, method, argument):
         PyroWrapper._deferred_actions[method] = (self, argument)
-        Log.info(PyroWrapper._deferred_actions)
 
-    def update(self, action, values):
+    def update(self, action, values=None):
         """Send the updated wrapper value to the network"""
         val = {"val": values, "id": self.id()}
         PyroWrapper._publisher.send_to_showtime(action, val)
@@ -307,20 +305,27 @@ class PyroWrapper(object):
         return idStr.group(0) if idStr else None
 
     @staticmethod 
-    def get_real_name_from_handle_name(name):
+    def get_original_name(name):
         nameStr = re.search('^.*(?=' + PyroWrapper.ID_DELIM[0] + ')', name)
         return nameStr.group(0) if nameStr else name
 
     def to_object(self, params=None):
         """Converts this wrapper to an object representation"""
         params = params if params else {}
+
+        try:
+            name = PyroWrapper.get_original_name(self.handle().name)
+        except AttributeError, e:
+            name = None
+
         params.update({
             "id": self.id(),
             "type": self.__class__.__name__,
-            "name": PyroWrapper.get_real_name_from_handle_name(self.handle().name),
+            "name": name,
             "parent": self.parent().id() if self.parent() else None,
             "index": self.handleindex
         })
+        
         return params
 
 class PyroMethodDef:

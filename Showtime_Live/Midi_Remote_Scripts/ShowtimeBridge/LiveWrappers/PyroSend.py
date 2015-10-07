@@ -6,6 +6,9 @@ class PyroSend(PyroWrapper):
     SEND_UPDATED = "send_updated"
     SEND_SET = "send_set"    
 
+    def create_handle_id(self):
+        return "%ss%s" % (self.parent().id(), self.handleindex)
+
     # -------------------
     # Wrapper definitions
     # -------------------
@@ -25,7 +28,11 @@ class PyroSend(PyroWrapper):
     @classmethod
     def register_methods(cls):
         PyroSend.add_outgoing_method(PyroSend.SEND_UPDATED)
-        PyroSend.add_incoming_method(PyroSend.SEND_SET, ["id", "value"], PyroSend.send_set)
+        PyroSend.add_incoming_method(
+            PyroSend.SEND_SET,
+            ["id", "value"],
+            PyroSend.send_set
+        )
 
     # --------
     # Incoming

@@ -8,6 +8,9 @@ class PyroSong(PyroWrapper):
     SONG_TRACKS_UPDATED = "song_tracks_updated"
     SONG_METERS = "song_meters"
 
+    def create_handle_id(self):
+        return "song"
+
     # -------------------
     # Wrapper definitions
     # -------------------
@@ -62,14 +65,11 @@ class PyroSong(PyroWrapper):
             Log.warn("Couldn't get song wrapper. " + str(e))
 
         wrappers = []
-        try:
-            for cls in PyroWrapper.__subclasses__():
-                Log.info("Converting %s instances to objects" % cls.__name__)
-                for instance in cls.instances():
-                    wrappers.append(instance.to_object())
-        except:
-            Log.error("Couldn't build song list")
-        
+        for cls in PyroWrapper.__subclasses__():
+            Log.info("Converting %s instances to objects" % cls.__name__)
+            for instance in cls.instances():
+                wrappers.append(instance.to_object())
+
         song.respond(PyroSong.SONG_LAYOUT, wrappers)
 
 

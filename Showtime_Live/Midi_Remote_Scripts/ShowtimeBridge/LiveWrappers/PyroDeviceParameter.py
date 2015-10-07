@@ -4,15 +4,11 @@ from ..Utils import Utils
 
 class PyroDeviceParameter(PyroWrapper):
     # Message types
-    PARAM_UPDATED = "param_update"
-    PARAM_SET_VALUE = "param_set_value"
+    PARAM_UPDATED = "param_updated"
+    PARAM_SET = "param_set"
 
     def create_handle_id(self):
-        return PyroDeviceParameter.format_parameter_id(self.parent().id(), self.handleindex)
-
-    @staticmethod
-    def format_parameter_id(parentId, parameterId):
-        return str(parentId) + "p" + str(parameterId)
+        return "%sp%s" % (self.parent().id(), self.handleindex)
 
     # -------------------
     # Wrapper definitions
@@ -34,23 +30,23 @@ class PyroDeviceParameter(PyroWrapper):
     def register_methods(cls):
         PyroDeviceParameter.add_outgoing_method(PyroDeviceParameter.PARAM_UPDATED)
         PyroDeviceParameter.add_incoming_method(
-            PyroDeviceParameter.PARAM_SET_VALUE, ["id", "value"],
-            PyroDeviceParameter.set_value)
+            PyroDeviceParameter.PARAM_SET, ["id", "value"],
+            PyroDeviceParameter.queue_param_value)
 
-    def to_object(self):
+    def to_object(self):    
         params = {
             "value": self.handle().value,
             "min": self.handle().min,
             "max": self.handle().max,
-        }
-        return PyroWrapper.toObject(self, params)
+        }   
+        return PyroWrapper.to_object(self, params)
         
 
     # --------
     # Incoming
     # --------
     @staticmethod
-    def set_value(args):
+    def queue_param_value(args):
         instance = PyroDeviceParameter.find_wrapper_by_id(args["id"])
         if instance:
             instance.defer_action(instance.apply_param_value, args["value"])

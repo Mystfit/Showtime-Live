@@ -26,6 +26,13 @@ class PyroDevice(PyroWrapper):
     def register_methods(cls):
         PyroWrapper.add_outgoing_method(PyroDevice.DEVICE_UPDATED)
 
+    def to_object(self):
+        params = {
+            "can_have_drum_pads": self.handle().can_have_drum_pads,
+            "can_have_chains": self.handle().can_have_chains
+        }
+        return PyroWrapper.to_object(self, params)
+
     # --------
     # Outgoing
     # --------
