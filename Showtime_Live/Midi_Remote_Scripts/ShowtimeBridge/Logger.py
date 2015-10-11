@@ -2,6 +2,7 @@ class Log():
     LOG_INFO = 2
     LOG_WARN = 1
     LOG_ERRORS = 0
+    LOG_DEBUG = -1
 
     _loggermethod = None
     _loggerlevel = 0
@@ -20,6 +21,11 @@ class Log():
             Log._loggermethod(str(message))
         else:
             print(message)
+
+    @staticmethod
+    def debug(message):
+        # if Log._loggerlevel >= Log.LOG_DEBUG:
+        Log.write("DEBUG: " + str(message))
 
     @staticmethod
     def info(message):

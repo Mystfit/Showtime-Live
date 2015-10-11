@@ -48,5 +48,5 @@ class PyroDevice(PyroWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
-        Log.info("Parameter list changed")
+        Log.info("--- Parameter list changed")
         PyroWrapper.update_hierarchy(self, PyroDeviceParameter, self.handle().parameters)

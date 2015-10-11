@@ -1,7 +1,8 @@
 from PyroWrapper import *
 from PyroDevice import PyroDevice
 from PyroSend import PyroSend
-from PyroMixer import PyroMixer
+from PyroDeviceParameter import PyroDeviceParameter
+# from PyroMixer import PyroMixer
 
 
 class PyroTrack(PyroWrapper):
@@ -11,23 +12,23 @@ class PyroTrack(PyroWrapper):
     TRACK_METER = "track_meter"
     TRACK_FIRE_SLOT_INDEX = "track_fire_slot_index"
     TRACK_STOP = "track_stop"
+    TRACK_MIXER_SENDS_UPDATED = "track_sends_updated"
+    # TRACK_MIXER_VOLUME_SET = "track_volume_set"
+    # TRACK_MIXER_VOLUME_UPDATED = "track_volume_updated"
 
     # -------------------
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
         PyroWrapper.create_listeners(self)
-        Log.info("Creating track listeners")
         if self.handle():
             try:
                 self.handle().add_fired_slot_index_listener(self.fired_slot_index)
                 self.handle().add_playing_slot_index_listener(self.playing_slot_index)
+                self.handle().mixer_device.add_sends_listener(self.update_hierarchy)
             except:
-                Log.warn("Couldn't add listeners to track")
+                pass
             self.handle().add_devices_listener(self.update_hierarchy)
-
-        else:
-            Log.warn("Track handle doesn't exit yet")
 
     def destroy_listeners(self):
         PyroWrapper.destroy_listeners(self)
@@ -35,20 +36,24 @@ class PyroTrack(PyroWrapper):
             try:
                 self.handle().remove_fired_slot_index_listener(self.fired_slot_index)
                 self.handle().remove_playing_slot_index_listener(self.playing_slot_index)
+                self.handle().mixer_device.remove_sends_listener(self.sends_updated)
             except:
-                Log.warn("Track doesn't have these listeners")
+                pass
             self.handle().remove_devices_listener(self.update_hierarchy)    
-
-        else:
-            Log.warn("Handle is gone. Can't remove listeners.")   
         
     @classmethod
     def register_methods(cls):
         PyroWrapper.add_outgoing_method(PyroTrack.TRACK_FIRED_SLOT)
         PyroWrapper.add_outgoing_method(PyroTrack.TRACK_METER)
         PyroWrapper.add_outgoing_method(PyroTrack.TRACK_PLAYING_SLOT)
+        PyroWrapper.add_outgoing_method(PyroTrack.TRACK_MIXER_SENDS_UPDATED)
         PyroWrapper.add_incoming_method(PyroTrack.TRACK_FIRE_SLOT_INDEX, ["id", "clipindex"], PyroTrack.fire_slot_index)
         PyroWrapper.add_incoming_method(PyroTrack.TRACK_STOP, ["id"], PyroTrack.stop_track)
+        # PyroWrapper.add_incoming_method(
+        #     PyroTrack.TRACK_MIXER_VOLUME_SET,
+        #     ["id", "value"],
+        #     PyroTrack.queue_volume
+        # )
 
     def to_object(self):
         params = {
@@ -79,6 +84,19 @@ class PyroTrack(PyroWrapper):
         except AttributeError:
             Log.warn("No clip slots in track")
 
+    # @staticmethod
+    # def queue_volume(args):
+    #     Log.info("About to find mixer")
+    #     instance = PyroTrack.find_wrapper_by_id(args["id"])
+    #     if instance:
+    #         instance.defer_action(instance.apply_volume, args["value"])
+    #     else:
+    #         Log.warn("Could not find Mixer for track %s " % instance.parent().name)
+
+    # def apply_volume(self, value):
+    #     self.handle().volume.value = Utils.clamp(self.handle().mixer_device.volume.min, self.handle().mixer_device.volume.max, float(value))
+    #     Log.info("Val:%s on %s" % (self.handle().mixer_device.volume.value, self.id()))
+
     # --------
     # Outgoing
     # --------
@@ -102,8 +120,10 @@ class PyroTrack(PyroWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
-        Log.info("Device list changed")
+        Log.info("-- Device list changed")
         PyroWrapper.update_hierarchy(self, PyroDevice, self.handle().devices)
-
-        # Each track only contains one mixer so we can skip the hierarchy
-        PyroMixer.add_instance(PyroMixer(self.handle().mixer_device, 0, self))
+        # PyroWrapper.update_hierarchy(self, PyroSend, self.handle().mixer_device.sends)
+        # PyroWrapper.update_hierarchy(self, PyroDeviceParameter, [
+        #     self.handle().mixer_device.volume,
+        #     self.handle().mixer_device.panning
+        # ])

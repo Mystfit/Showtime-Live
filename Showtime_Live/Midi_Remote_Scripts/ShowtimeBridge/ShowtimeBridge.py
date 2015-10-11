@@ -43,7 +43,7 @@ class ShowtimeBridge(ControlSurface):
             self._suppress_send_midi = True
 
             Log.set_logger(self.log_message)
-            Log.set_log_level(Log.LOG_INFO)
+            Log.set_log_level(Log.LOG_WARN)
             Log.write("-----------------------")
             Log.write("ShowtimeBridge starting")
             Log.info(sys.version)
@@ -51,7 +51,9 @@ class ShowtimeBridge(ControlSurface):
             self.initPyroServer()
 
             # Register methods to the showtimebridge server
-            for cls in PyroWrapper.__subclasses__():
+            wrapperClasses = PyroWrapper.__subclasses__()
+            wrapperClasses.append(PyroWrapper)
+            for cls in wrapperClasses:  
                 cls.clear_instances()
                 cls.register_methods()
                 for action in cls.incoming_methods().values():

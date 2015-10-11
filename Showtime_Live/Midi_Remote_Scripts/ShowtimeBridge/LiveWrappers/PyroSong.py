@@ -77,7 +77,7 @@ class PyroSong(PyroWrapper):
     # Hierarchy
 
     def update_hierarchy(self):
-        Log.info("Track list changed")
+        Log.info("- Track list changed")
         tracks = list(itertools.chain(self.handle().tracks, self.handle().return_tracks))
         PyroWrapper.update_hierarchy(self, PyroTrack, tracks)
 

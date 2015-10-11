@@ -12,7 +12,7 @@ class PyroMixer(PyroWrapper):
 
 
     def create_handle_id(self):
-        return "%sm" % self.parent().id()
+        return "%sm0" % self.parent().id()
     
     # -------------------
     # Wrapper definitions
@@ -70,5 +70,5 @@ class PyroMixer(PyroWrapper):
     def update_hierarchy(self):   
         Log.info("Send list changed")
         PyroWrapper.update_hierarchy(self, PyroSend, self.handle().sends)
-        PyroDeviceParameter.add_instance(PyroDeviceParameter(self.handle().volume, 0, self))
-        PyroDeviceParameter.add_instance(PyroDeviceParameter(self.handle().panning, 0, self))
+        # PyroDeviceParameter.add_instance(PyroDeviceParameter(self.handle().volume, 0, self))
+        # PyroDeviceParameter.add_instance(PyroDeviceParameter(self.handle().panning, 1, self))
