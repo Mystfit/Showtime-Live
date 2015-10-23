@@ -13,7 +13,6 @@ class PyroClipslot(PyroWrapper):
         if self.handle():
         	self.handle().add_has_clip_listener(self.update_hierarchy)
         	self.handle().add_is_triggered_listener(self.clip_status)
-            self.handle().add_playing_status_listener(self.clip_status)
 
     def destroy_listeners(self):
         PyroWrapper.destroy_listeners(self)
@@ -21,7 +20,6 @@ class PyroClipslot(PyroWrapper):
             try:
 	        	self.handle().remove_has_clip_listener(self.update_hierarchy)
 	        	self.handle().remove_is_triggered_listener(self.clip_status)
-            	self.handle().remove_playing_status_listener(self.clip_status)
             except RuntimeError:
                 Log.warn("Couldn't remove clipslot listeners")
 

@@ -282,12 +282,12 @@ class PyroWrapper(object):
 
     def update(self, action, values=None):
         """Send the updated wrapper value to the network"""
-        val = {"val": values, "id": self.id()}
+        val = {"value": values, "id": self.id()}
         PyroWrapper._publisher.send_to_showtime(action, val)
 
     def respond(self, action, values):
-        """Send the updated wrapper value to the network"""
-        val = {"val": values, "id": self.id()}
+        """Send the updated wrapper value to the network""" 
+        val = {"value": values, "id": self.id()}
         PyroWrapper._publisher.send_to_showtime(action, val, True)
 
 
@@ -385,7 +385,7 @@ class PyroWrapper(object):
 
     @staticmethod
     def send_layout_diff(args):
-        PyroWrapper._publisher.send_to_showtime(PyroWrapper.LAYOUT_UPDATED, PyroWrapper._layout_updates)
+        PyroWrapper._publisher.send_to_showtime(PyroWrapper.LAYOUT_UPDATED, {"val": PyroWrapper._layout_updates})
         PyroWrapper._layout_updates[:] = []
 
 
