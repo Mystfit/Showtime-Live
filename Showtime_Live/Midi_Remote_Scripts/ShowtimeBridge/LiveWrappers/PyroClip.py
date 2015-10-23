@@ -10,6 +10,10 @@ class PyroClip(PyroWrapper):
     # -------------------
     # Wrapper definitions
     # -------------------
+
+    def create_handle_id(self):
+        return "%scl%s" % (self.parent().id(), self.handleindex)
+
     def create_listeners(self):
         PyroWrapper.create_listeners(self)
         if self.handle():

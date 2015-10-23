@@ -45,10 +45,14 @@ class PyroSong(PyroWrapper):
     def song_time_updated(self):
         meterLevels = []
         for track in PyroTrack.instances():
-            if not track.handle().has_midi_output:
-                meterLevels.append((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5)
-            else:
-                meterLevels.append(track.handle().output_meter_level)
+            if track:
+                if track.handle():
+                    if track.handle().has_midi_output:
+                        track.handle().output_meter_level
+                        # meterLevels.append(track.handle().output_meter_level)
+                    else:
+                        meterLevels.append((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5)
+                
         self.update(PyroSong.SONG_METERS, meterLevels)
 
     # --------
