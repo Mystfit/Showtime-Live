@@ -3,6 +3,7 @@ from PyroDevice import PyroDevice
 from PyroSend import PyroSend
 from PyroDeviceParameter import PyroDeviceParameter
 from PyroClipslot import PyroClipslot
+from ..Utils import Utils
 # from PyroMixer import PyroMixer
 
 
@@ -100,7 +101,7 @@ class PyroTrack(PyroWrapper):
     def output_meter(self):
         self.update(PyroTrack.TRACK_METER, {
             "trackindex": self.handleindex,
-            "peak": (self.handle().output_meter_left + self.handle().output_meter_right) * 0.5})
+            "peak": Utils.truncate(((self.handle().output_meter_left + self.handle().output_meter_right) * 0.5), 4)})
 
     # ---------
     # Utilities

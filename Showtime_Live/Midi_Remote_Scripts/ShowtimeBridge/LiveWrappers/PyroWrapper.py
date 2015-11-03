@@ -205,10 +205,13 @@ class PyroWrapper(object):
             for child in parentWrapper.children():
                 # We check against name and handle ref due to
                 # inconsistencies when comparing Live objects
-                if child.handle() and hasattr(handle, "name"):
-                    if child.handle().name == handle.name:
-                        Log.info("Found wrapper inside parent. %s" % child.handle().name)
-                        return child
+                try:
+                    if child.handle():
+                        if child.handle().name == handle.name:
+                            Log.info("Found wrapper inside parent. %s" % child.handle().name)
+                            return child
+                except AttributeError:
+                    Log.info("Parent handle %s has no name attr" % handle)
         else:
             Log.info("Couldn't find parent wrapper for %s" % parentId)
         return None
