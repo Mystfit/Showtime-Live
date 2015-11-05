@@ -32,7 +32,7 @@ def install_midi_remote_scripts():
             print("No Ableton Live installations detected.")
 
 setup(name='Showtime-Live',
-      version='1.2',
+      version='1.3',
       description='Showtime Bridge for Ableton Live.',
       long_description=read('README.md'),
       author='Byron Mallett',
@@ -40,7 +40,7 @@ setup(name='Showtime-Live',
       url='http://github.com/Mystfit/Showtime-Live',
       scripts=['scripts/LiveShowtimeClient.py'],
       license='MIT',
-      install_requires=["Showtime-Python", "rtmidi_python", "Pyro<=3.16"],
+      install_requires=["Showtime-Python", "rtmidi_python", "Pyro<=3.16", "zeroconf"],
       packages=find_packages()
       )
 

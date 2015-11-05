@@ -3,6 +3,7 @@ import Pyro.core
 import Pyro.errors
 
 from Showtime.zst_node import ZstNode
+from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
 
 import sys
@@ -16,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../Midi_Remote_Scripts"
 from ShowtimeBridge.LivePublisher import LivePublisher
 from ShowtimeBridge.PyroShared import PyroPrefixes
 import Showtime_Live.MidiRouter
+from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
 
 
 class RegistrationThread(threading.Thread):
@@ -52,10 +54,8 @@ class LiveRouter(Subscriber):
 
         if not stageaddress:
             print("Creating internal stage at tcp://127.0.0.1:6000")
-            self.stageNode = ZstNode("ShowtimeStage")
             port = 6000
-            address = "tcp://*:" + str(port)
-            self.stageNode.reply.socket.bind(address)
+            self.stageNode = ZstStage("ShowtimeStage", port)
             self.stageNode.start()
             stageaddress = "127.0.0.1:" + str(port)
 
@@ -97,13 +97,13 @@ class LiveRouter(Subscriber):
         if pyroType == PyroPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
         elif pyroType == PyroPrefixes.OUTGOING or pyroType == PyroPrefixes.RESPONDER:
-            print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
+            # print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)
             else:
                 print "Outgoing method not registered!"
 
     def incoming(self, message):
-        print "ST-->Live: " + str(message.name)
+        # print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
         self.publisher.send_to_live(message.name, args)
