@@ -99,9 +99,7 @@ class PyroTrack(PyroWrapper):
     # Outgoing
     # --------
     def output_meter(self):
-        self.update(PyroTrack.TRACK_METER, {
-            "trackindex": self.handleindex,
-            "peak": Utils.truncate(((self.handle().output_meter_left + self.handle().output_meter_right) * 0.5), 4)})
+        self.update(PyroTrack.TRACK_METER, {"peak": Utils.truncate(((self.handle().output_meter_left + self.handle().output_meter_right) * 0.5), 4)})
 
     # ---------
     # Utilities
