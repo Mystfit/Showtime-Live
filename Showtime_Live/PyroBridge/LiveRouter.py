@@ -97,13 +97,13 @@ class LiveRouter(Subscriber):
         if pyroType == PyroPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
         elif pyroType == PyroPrefixes.OUTGOING or pyroType == PyroPrefixes.RESPONDER:
-            # print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
+            print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)
             else:
                 print "Outgoing method not registered!"
 
     def incoming(self, message):
-        # print "ST-->Live: " + str(message.name)
+        print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
         self.publisher.send_to_live(message.name, args)
