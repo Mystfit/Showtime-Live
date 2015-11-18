@@ -1,13 +1,13 @@
-from PyroWrapper import *
-from PyroDevice import PyroDevice
-from PyroSend import PyroSend
-from PyroDeviceParameter import PyroDeviceParameter
-from PyroClipslot import PyroClipslot
+from LiveWrapper import *
+from LiveDevice import LiveDevice
+from LiveSend import LiveSend
+from LiveDeviceParameter import LiveDeviceParameter
+from LiveClipslot import LiveClipslot
 from ..Utils import Utils
-# from PyroMixer import PyroMixer
+# from LiveMixer import LiveMixer
 
 
-class PyroTrack(PyroWrapper):
+class LiveTrack(LiveWrapper):
     # Message types
     TRACK_METER = "track_meter"
     TRACK_STOP = "track_stop"
@@ -19,7 +19,7 @@ class PyroTrack(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        PyroWrapper.create_listeners(self)
+        LiveWrapper.create_listeners(self)
         if self.handle():
             try:
                 self.handle().mixer_device.add_sends_listener(self.update_hierarchy)
@@ -31,7 +31,7 @@ class PyroTrack(PyroWrapper):
             self.handle().add_devices_listener(self.update_devices)
 
     def destroy_listeners(self):
-        PyroWrapper.destroy_listeners(self)
+        LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().mixer_device.remove_sends_listener(self.sends_updated)
@@ -44,13 +44,13 @@ class PyroTrack(PyroWrapper):
         
     @classmethod
     def register_methods(cls):
-        PyroWrapper.add_outgoing_method(PyroTrack.TRACK_METER)
-        PyroWrapper.add_outgoing_method(PyroTrack.TRACK_MIXER_SENDS_UPDATED)
-        PyroWrapper.add_incoming_method(PyroTrack.TRACK_STOP, ["id"], PyroTrack.stop_track)
-        # PyroWrapper.add_incoming_method(
-        #     PyroTrack.TRACK_MIXER_VOLUME_SET,
+        LiveWrapper.add_outgoing_method(LiveTrack.TRACK_METER)
+        LiveWrapper.add_outgoing_method(LiveTrack.TRACK_MIXER_SENDS_UPDATED)
+        LiveWrapper.add_incoming_method(LiveTrack.TRACK_STOP, ["id"], LiveTrack.stop_track)
+        # LiveWrapper.add_incoming_method(
+        #     LiveTrack.TRACK_MIXER_VOLUME_SET,
         #     ["id", "value"],
-        #     PyroTrack.queue_volume
+        #     LiveTrack.queue_volume
         # )
 
     def to_object(self):
@@ -61,14 +61,14 @@ class PyroTrack(PyroWrapper):
             "mute": self.handle().mute,
             "midi": self.handle().has_midi_input,
         }
-        return PyroWrapper.to_object(self, params)
+        return LiveWrapper.to_object(self, params)
 
     # --------
     # Incoming
     # --------
     @staticmethod
     def fire_slot_index(args):
-        track = PyroTrack.find_wrapper_by_id(args["id"]).handle()
+        track = LiveTrack.find_wrapper_by_id(args["id"]).handle()
         try:
             track.clip_slots[int(args["clipindex"])].fire()
         except AttributeError:
@@ -76,7 +76,7 @@ class PyroTrack(PyroWrapper):
 
     @staticmethod
     def stop_track(args):
-        track = PyroTrack.find_wrapper_by_id(args["id"]).handle()
+        track = LiveTrack.find_wrapper_by_id(args["id"]).handle()
         try:
             track.stop_all_clips()
         except AttributeError:
@@ -85,7 +85,7 @@ class PyroTrack(PyroWrapper):
     # @staticmethod
     # def queue_volume(args):
     #     Log.info("About to find mixer")
-    #     instance = PyroTrack.find_wrapper_by_id(args["id"])
+    #     instance = LiveTrack.find_wrapper_by_id(args["id"])
     #     if instance:
     #         instance.defer_action(instance.apply_volume, args["value"])
     #     else:
@@ -99,7 +99,7 @@ class PyroTrack(PyroWrapper):
     # Outgoing
     # --------
     def output_meter(self):
-        self.update(PyroTrack.TRACK_METER, {
+        self.update(LiveTrack.TRACK_METER, {
             "trackindex": self.handleindex,
             "peak": Utils.truncate(((self.handle().output_meter_left + self.handle().output_meter_right) * 0.5), 4)})
 
@@ -110,15 +110,15 @@ class PyroTrack(PyroWrapper):
         self.update_devices()
         self.update_clips()
         
-        # PyroWrapper.update_hierarchy(self, PyroSend, self.handle().mixer_device.sends)
-        # PyroWrapper.update_hierarchy(self, PyroDeviceParameter, [
+        # LiveWrapper.update_hierarchy(self, LiveSend, self.handle().mixer_device.sends)
+        # LiveWrapper.update_hierarchy(self, LiveDeviceParameter, [
         #     self.handle().mixer_device.volume,
         #     self.handle().mixer_device.panning
         # ])
 
     def update_devices(self):
         Log.info("-- Device list changed")
-        PyroWrapper.update_hierarchy(self, PyroDevice, self.handle().devices)
+        LiveWrapper.update_hierarchy(self, LiveDevice, self.handle().devices)
 
     def update_clips(self):
-        PyroWrapper.update_hierarchy(self, PyroClipslot, self.handle().clip_slots)
+        LiveWrapper.update_hierarchy(self, LiveClipslot, self.handle().clip_slots)

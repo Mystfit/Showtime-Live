@@ -1,8 +1,8 @@
-from PyroWrapper import *
-from PyroDeviceParameter import PyroDeviceParameter
+from LiveWrapper import *
+from LiveDeviceParameter import LiveDeviceParameter
 
 
-class PyroDevice(PyroWrapper):
+class LiveDevice(LiveWrapper):
     # Message types
     DEVICE_UPDATED = "device_parameters_updated"
     
@@ -10,12 +10,12 @@ class PyroDevice(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        PyroWrapper.create_listeners(self)
+        LiveWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_parameters_listener(self.parameters_updated)
 
     def destroy_listeners(self):
-        PyroWrapper.destroy_listeners(self)
+        LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().remove_parameters_listener(self.parameters_updated)
@@ -24,14 +24,14 @@ class PyroDevice(PyroWrapper):
 
     @classmethod
     def register_methods(cls):
-        PyroWrapper.add_outgoing_method(PyroDevice.DEVICE_UPDATED)
+        LiveWrapper.add_outgoing_method(LiveDevice.DEVICE_UPDATED)
 
     def to_object(self):
         params = {
             "can_have_drum_pads": self.handle().can_have_drum_pads,
             "can_have_chains": self.handle().can_have_chains
         }
-        return PyroWrapper.to_object(self, params)
+        return LiveWrapper.to_object(self, params)
 
     # --------
     # Outgoing
@@ -40,7 +40,7 @@ class PyroDevice(PyroWrapper):
         for parameter in self._children:
             parameter.destroy()
 
-        self.update(PyroDevice.DEVICE_UPDATED, {
+        self.update(LiveDevice.DEVICE_UPDATED, {
             "track": self.track.name,
             "device": self.handle().name})
 
@@ -49,4 +49,4 @@ class PyroDevice(PyroWrapper):
     # ---------
     def update_hierarchy(self):   
         Log.info("--- Parameter list changed")
-        PyroWrapper.update_hierarchy(self, PyroDeviceParameter, self.handle().parameters)
+        LiveWrapper.update_hierarchy(self, LiveDeviceParameter, self.handle().parameters)

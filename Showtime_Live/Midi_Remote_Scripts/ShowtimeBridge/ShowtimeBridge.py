@@ -16,12 +16,12 @@ from LiveUtils import *
 from ControlSurfaceComponents import *
 from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
 
-from LiveWrappers.PyroWrapper import PyroWrapper
-from LiveWrappers.PyroDevice import PyroDevice
-from LiveWrappers.PyroDeviceParameter import PyroDeviceParameter
-from LiveWrappers.PyroSend import PyroSend
-from LiveWrappers.PyroSong import PyroSong
-from LiveWrappers.PyroTrack import PyroTrack
+from LiveWrappers.LiveWrapper import LiveWrapper
+from LiveWrappers.LiveDevice import LiveDevice
+from LiveWrappers.LiveDeviceParameter import LiveDeviceParameter
+from LiveWrappers.LiveSend import LiveSend
+from LiveWrappers.LiveSong import LiveSong
+from LiveWrappers.LiveTrack import LiveTrack
 
 from LiveUDPEndpoint import LiveUDPEndpoint
 from Logger import Log
@@ -43,8 +43,8 @@ class ShowtimeBridge(ControlSurface):
             self.initServer()
 
             # Register methods to the showtimebridge server
-            wrapperClasses = PyroWrapper.__subclasses__()
-            wrapperClasses.append(PyroWrapper)
+            wrapperClasses = LiveWrapper.__subclasses__()
+            wrapperClasses.append(LiveWrapper)
             for cls in wrapperClasses:  
                 cls.clear_instances()
                 cls.register_methods()
@@ -61,7 +61,7 @@ class ShowtimeBridge(ControlSurface):
             self.clock = PyroEncoderElement(0, 119)
 
             # Create the root wrapper
-            PyroSong.add_instance(PyroSong(getSong()))
+            LiveSong.add_instance(LiveSong(getSong()))
 
             self.refresh_state()
             self._suppress_send_midi = False
@@ -70,7 +70,7 @@ class ShowtimeBridge(ControlSurface):
         self.endpoint = LiveUDPEndpoint(6002, 6001, False)
 
         # Set the global publisher for all wrappers
-        PyroWrapper.set_publisher(self.endpoint)
+        LiveWrapper.set_publisher(self.endpoint)
 
     def disconnect(self):
         self._suppress_send_midi = True
@@ -102,4 +102,4 @@ class ShowtimeBridge(ControlSurface):
 
     def requestLoop(self):
         self.endpoint.handle_requests()
-        PyroWrapper.process_deferred_actions()
+        LiveWrapper.process_deferred_actions()

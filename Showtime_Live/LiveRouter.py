@@ -32,7 +32,6 @@ class RegistrationThread(threading.Thread):
         self.join(2)
 
 class LiveRouter(UDPEndpoint):
-
     def __init__(self, stageaddress, midiportindex):
         UDPEndpoint.__init__(self, 6001, 6002)
         self.midiRouter = MidiRouter.MidiRouter(midiportindex)

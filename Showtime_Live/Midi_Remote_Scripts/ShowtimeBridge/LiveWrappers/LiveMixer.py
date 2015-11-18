@@ -1,10 +1,10 @@
-from PyroWrapper import *
-from PyroDeviceParameter import PyroDeviceParameter
-from PyroSend import PyroSend
+from LiveWrapper import *
+from LiveDeviceParameter import LiveDeviceParameter
+from LiveSend import LiveSend
 from ..Utils import Utils
 
 
-class PyroMixer(PyroWrapper):
+class LiveMixer(LiveWrapper):
     # Message types
     MIXER_SENDS_UPDATED = "mixer_sends_updated"
     # MIXER_VOLUME_SET = "mixer_volume_set"
@@ -18,12 +18,12 @@ class PyroMixer(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        PyroWrapper.create_listeners(self)
+        LiveWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_sends_listener(self.sends_updated)
 
     def destroy_listeners(self):
-        PyroWrapper.destroy_listeners(self)
+        LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().remove_sends_listener(self.sends_updated)
@@ -32,11 +32,11 @@ class PyroMixer(PyroWrapper):
 
     @classmethod
     def register_methods(cls):
-        PyroWrapper.add_outgoing_method(PyroMixer.MIXER_SENDS_UPDATED)
-        # PyroWrapper.add_incoming_method(
-        #     PyroMixer.MIXER_VOLUME_SET,
+        LiveWrapper.add_outgoing_method(LiveMixer.MIXER_SENDS_UPDATED)
+        # LiveWrapper.add_incoming_method(
+        #     LiveMixer.MIXER_VOLUME_SET,
         #     ["id", "value"],
-        #     PyroMixer.queue_volume
+        #     LiveMixer.queue_volume
         # )
 
 
@@ -52,7 +52,7 @@ class PyroMixer(PyroWrapper):
     # @staticmethod
     # def queue_volume(args):
     #     Log.info("About to find mixer")
-    #     instance = PyroMixer.find_wrapper_by_id(args["id"])
+    #     instance = LiveMixer.find_wrapper_by_id(args["id"])
     #     Log.info("Mixer is %s" % instance)
     #     if instance:
     #         instance.defer_action(instance.apply_volume, args["value"])
@@ -69,6 +69,6 @@ class PyroMixer(PyroWrapper):
     # ---------
     def update_hierarchy(self):   
         Log.info("Send list changed")
-        PyroWrapper.update_hierarchy(self, PyroSend, self.handle().sends)
-        # PyroDeviceParameter.add_instance(PyroDeviceParameter(self.handle().volume, 0, self))
-        # PyroDeviceParameter.add_instance(PyroDeviceParameter(self.handle().panning, 1, self))
+        LiveWrapper.update_hierarchy(self, LiveSend, self.handle().sends)
+        # LiveDeviceParameter.add_instance(LiveDeviceParameter(self.handle().volume, 0, self))
+        # LiveDeviceParameter.add_instance(LiveDeviceParameter(self.handle().panning, 1, self))

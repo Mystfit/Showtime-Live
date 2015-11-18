@@ -2,7 +2,7 @@ import re
 from ..Logger import Log
 
 
-class PyroWrapper(object):
+class LiveWrapper(object):
     # Proxy method types for Showtime
     METHOD_READ = "read"
     METHOD_WRITE = "write"
@@ -54,8 +54,8 @@ class PyroWrapper(object):
     @staticmethod
     def destroy(instance):
         """Destroy a wrapper"""
-        PyroWrapper.queue_layout_diff({
-            "status": PyroWrapper.LAYOUT_REMOVE,
+        LiveWrapper.queue_layout_diff({
+            "status": LiveWrapper.LAYOUT_REMOVE,
             "id": instance.id()
         })
 
@@ -63,7 +63,7 @@ class PyroWrapper(object):
             if instance.id() in instance.parent().children():
                 instance.parent().children().remove(instance.id())
         for child in instance._children:
-            PyroWrapper.destroy(child)
+            LiveWrapper.destroy(child)
         instance._children.clear()
         instance.destroy_listeners()
         try:
@@ -130,7 +130,7 @@ class PyroWrapper(object):
         for wrapper in instances:
             if wrapper.id() not in idlist:
                 totalRemoved += 1
-                PyroWrapper.destroy(wrapper)
+                LiveWrapper.destroy(wrapper)
         Log.info("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
 
     
@@ -152,9 +152,9 @@ class PyroWrapper(object):
             cls._instances = {}
         cls._instances[instance.id()] = instance
 
-        diff_status = {"status": PyroWrapper.LAYOUT_ADDED} 
+        diff_status = {"status": LiveWrapper.LAYOUT_ADDED} 
         diff_status.update(instance.to_object())
-        PyroWrapper.queue_layout_diff(diff_status)
+        LiveWrapper.queue_layout_diff(diff_status)
 
         return instance
 
@@ -179,12 +179,12 @@ class PyroWrapper(object):
             Log.info("Handle %s has no name attr" % handle)
             return None
 
-        handleId = PyroWrapper.get_id_from_name(name)
+        handleId = LiveWrapper.get_id_from_name(name)
         if handleId:
             return cls.find_wrapper_by_id(handleId)
         else:
             Log.info("No id in name. Searching in parent")
-            return PyroWrapper.find_wrapper_from_handle_parent(handle)
+            return LiveWrapper.find_wrapper_from_handle_parent(handle)
         return None
 
     @staticmethod
@@ -192,12 +192,12 @@ class PyroWrapper(object):
         '''Find wrapper for a handle from its siblings'''
         parentId = None
         try:
-            parentId = PyroWrapper.get_id_from_name(handle.canonical_parent.name)
+            parentId = LiveWrapper.get_id_from_name(handle.canonical_parent.name)
         except AttributeError:
             Log.info("Parent has no name. Handle is %s" % handle.canonical_parent)
         
         parentWrapper = None
-        for cls in PyroWrapper.__subclasses__():
+        for cls in LiveWrapper.__subclasses__():
             parentWrapper = cls.find_wrapper_by_id(parentId)
             if parentWrapper:
                 break
@@ -223,7 +223,7 @@ class PyroWrapper(object):
             Log.warn("Outgoing method aready exists")
             return
 
-        cls._outgoing_methods[methodname] = PyroMethodDef(methodname, PyroWrapper.METHOD_READ)
+        cls._outgoing_methods[methodname] = PyroMethodDef(methodname, LiveWrapper.METHOD_READ)
 
     @classmethod
     def add_incoming_method(cls, methodname, methodargs, callback, isResponder=False):
@@ -238,7 +238,7 @@ class PyroWrapper(object):
             for key in methodargs:
                 methodargkeys[key] = None
 
-        accessType = PyroWrapper.METHOD_RESPOND if isResponder else PyroWrapper.METHOD_WRITE
+        accessType = LiveWrapper.METHOD_RESPOND if isResponder else LiveWrapper.METHOD_WRITE
         cls._incoming_methods[methodname] = PyroMethodDef(methodname, accessType, methodargkeys, callback)
 
 
@@ -247,7 +247,7 @@ class PyroWrapper(object):
     @staticmethod
     def set_publisher(publisher):
         """Set the global publisher for all wrappers"""
-        PyroWrapper._publisher = publisher
+        LiveWrapper._publisher = publisher
 
     @staticmethod
     def register_methods():
@@ -255,7 +255,7 @@ class PyroWrapper(object):
         Register base methods for all classes.
         Subclasses can override this to add their own methods
         """
-        PyroWrapper.add_outgoing_method(PyroWrapper.LAYOUT_UPDATED)
+        LiveWrapper.add_outgoing_method(LiveWrapper.LAYOUT_UPDATED)
 
     @classmethod
     def incoming_methods(cls):
@@ -272,26 +272,26 @@ class PyroWrapper(object):
         """Process all queued messages for wrappers that need to 
         be applied post-eventloop
         """
-        if len(PyroWrapper._deferred_actions.keys()) > 0:
-            for callback, action in PyroWrapper._deferred_actions.iteritems():
+        if len(LiveWrapper._deferred_actions.keys()) > 0:
+            for callback, action in LiveWrapper._deferred_actions.iteritems():
                 try:
                     callback(action[1])
                 except Exception, e:
                     Log.error("Couldn't run deferred action. %s" % e)
-            PyroWrapper._deferred_actions.clear()
+            LiveWrapper._deferred_actions.clear()
 
     def defer_action(self, method, argument):
-        PyroWrapper._deferred_actions[method] = (self, argument)
+        LiveWrapper._deferred_actions[method] = (self, argument)
 
     def update(self, action, values=None):
         """Send the updated wrapper value to the network"""
         val = {"value": values, "id": self.id()}
-        PyroWrapper._publisher.send_to_showtime(action, val)
+        LiveWrapper._publisher.send_to_showtime(action, val)
 
     def respond(self, action, values):
         """Send the updated wrapper value to the network""" 
         val = {"value": values, "id": self.id()}
-        PyroWrapper._publisher.send_to_showtime(action, val, True)
+        LiveWrapper._publisher.send_to_showtime(action, val, True)
 
 
     # ID methods
@@ -329,37 +329,37 @@ class PyroWrapper(object):
         try:
             handleName = self.handle().name
         except AttributeError:
-            handleName = PyroWrapper.ID_NULL
+            handleName = LiveWrapper.ID_NULL
 
-        matchedId = PyroWrapper.get_id_from_name(handleName)
+        matchedId = LiveWrapper.get_id_from_name(handleName)
 
         if matchedId:
             handleId = matchedId
         else:
-            handleId = PyroWrapper.generate_id()
-            handleName = PyroWrapper.generate_id_name_str(handleName, handleId)
+            handleId = LiveWrapper.generate_id()
+            handleName = LiveWrapper.generate_id_name_str(handleName, handleId)
             self.defer_action(self.set_handle_name, handleName)
         return handleId
 
     @staticmethod
     def generate_id():
-        PyroWrapper._id_counter += 1
-        return str(PyroWrapper._id_counter)
+        LiveWrapper._id_counter += 1
+        return str(LiveWrapper._id_counter)
 
     @staticmethod
     def generate_id_name_str(name, idnum):
-        name = name if name else PyroWrapper.ID_NULL
-        return name + PyroWrapper.ID_DELIM + str(idnum) + PyroWrapper.ID_END
+        name = name if name else LiveWrapper.ID_NULL
+        return name + LiveWrapper.ID_DELIM + str(idnum) + LiveWrapper.ID_END
 
     @staticmethod
     def get_id_from_name(name):
         """Split a handle name into name and id"""
-        idStr = re.search('(?<=' + PyroWrapper.ID_DELIM[0] + '\\' + PyroWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
+        idStr = re.search('(?<=' + LiveWrapper.ID_DELIM[0] + '\\' + LiveWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
         return idStr.group(0) if idStr else None
 
     @staticmethod 
     def get_original_name(name):
-        nameStr = re.search('^.*(?=' + PyroWrapper.ID_DELIM[0] + ')', name)
+        nameStr = re.search('^.*(?=' + LiveWrapper.ID_DELIM[0] + ')', name)
         return nameStr.group(0) if nameStr else name
 
     def to_object(self, params=None):
@@ -367,7 +367,7 @@ class PyroWrapper(object):
         params = params if params else {}
 
         try:
-            name = PyroWrapper.get_original_name(self.handle().name)
+            name = LiveWrapper.get_original_name(self.handle().name)
         except AttributeError, e:
             name = None
 
@@ -383,13 +383,13 @@ class PyroWrapper(object):
 
     @staticmethod
     def queue_layout_diff(diffItem):
-        PyroWrapper._layout_updates.append(diffItem)
-        PyroWrapper._deferred_actions[PyroWrapper.send_layout_diff] = (None, None)
+        LiveWrapper._layout_updates.append(diffItem)
+        LiveWrapper._deferred_actions[LiveWrapper.send_layout_diff] = (None, None)
 
     @staticmethod
     def send_layout_diff(args):
-        PyroWrapper._publisher.send_to_showtime(PyroWrapper.LAYOUT_UPDATED, {"val": PyroWrapper._layout_updates})
-        PyroWrapper._layout_updates[:] = []
+        LiveWrapper._publisher.send_to_showtime(LiveWrapper.LAYOUT_UPDATED, {"val": LiveWrapper._layout_updates})
+        LiveWrapper._layout_updates[:] = []
 
 
 class PyroMethodDef:

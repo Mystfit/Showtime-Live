@@ -1,8 +1,8 @@
-from PyroWrapper import *
+from LiveWrapper import *
 from ..Utils import Utils
 
 
-class PyroDeviceParameter(PyroWrapper):
+class LiveDeviceParameter(LiveWrapper):
     # Message types
     PARAM_UPDATED = "param_updated"
     PARAM_SET = "param_set"
@@ -14,12 +14,12 @@ class PyroDeviceParameter(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        PyroWrapper.create_listeners(self)
+        LiveWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_value_listener(self.value_updated)
 
     def destroy_listeners(self):
-        PyroWrapper.destroy_listeners(self)
+        LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().remove_value_listener(self.value_updated)
@@ -28,10 +28,10 @@ class PyroDeviceParameter(PyroWrapper):
 
     @classmethod
     def register_methods(cls):
-        PyroDeviceParameter.add_outgoing_method(PyroDeviceParameter.PARAM_UPDATED)
-        PyroDeviceParameter.add_incoming_method(
-            PyroDeviceParameter.PARAM_SET, ["id", "value"],
-            PyroDeviceParameter.queue_param_value)
+        LiveDeviceParameter.add_outgoing_method(LiveDeviceParameter.PARAM_UPDATED)
+        LiveDeviceParameter.add_incoming_method(
+            LiveDeviceParameter.PARAM_SET, ["id", "value"],
+            LiveDeviceParameter.queue_param_value)
 
     def to_object(self):    
         params = {
@@ -39,7 +39,7 @@ class PyroDeviceParameter(PyroWrapper):
             "min": self.handle().min,
             "max": self.handle().max,
         }   
-        return PyroWrapper.to_object(self, params)
+        return LiveWrapper.to_object(self, params)
         
 
     # --------
@@ -47,7 +47,7 @@ class PyroDeviceParameter(PyroWrapper):
     # --------
     @staticmethod
     def queue_param_value(args):
-        instance = PyroDeviceParameter.find_wrapper_by_id(args["id"])
+        instance = LiveDeviceParameter.find_wrapper_by_id(args["id"])
         if instance:
             instance.defer_action(instance.apply_param_value, args["value"])
         else:
@@ -61,4 +61,4 @@ class PyroDeviceParameter(PyroWrapper):
     # Outgoing
     # --------
     def value_updated(self):
-        self.update(PyroDeviceParameter.PARAM_UPDATED, self.handle().value)
+        self.update(LiveDeviceParameter.PARAM_UPDATED, self.handle().value)

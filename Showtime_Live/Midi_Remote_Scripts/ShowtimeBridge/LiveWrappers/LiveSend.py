@@ -1,7 +1,7 @@
-from PyroWrapper import *
+from LiveWrapper import *
 
 
-class PyroSend(PyroWrapper):
+class LiveSend(LiveWrapper):
     # Message types
     SEND_UPDATED = "send_updated"
     SEND_SET = "send_set"    
@@ -13,12 +13,12 @@ class PyroSend(PyroWrapper):
     # Wrapper definitions
     # -------------------
     def create_listeners(self):
-        PyroWrapper.create_listeners(self)
+        LiveWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_value_listener(self.send_updated)
 
     def destroy_listeners(self):
-        PyroWrapper.destroy_listeners(self)
+        LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().remove_value_listener(self.send_updated)
@@ -27,11 +27,11 @@ class PyroSend(PyroWrapper):
 
     @classmethod
     def register_methods(cls):
-        PyroSend.add_outgoing_method(PyroSend.SEND_UPDATED)
-        PyroSend.add_incoming_method(
-            PyroSend.SEND_SET,
+        LiveSend.add_outgoing_method(LiveSend.SEND_UPDATED)
+        LiveSend.add_incoming_method(
+            LiveSend.SEND_SET,
             ["id", "value"],
-            PyroSend.send_set
+            LiveSend.send_set
         )
 
     # --------
@@ -39,7 +39,7 @@ class PyroSend(PyroWrapper):
     # --------
     @staticmethod
     def send_set(args):
-        instance = PyroSend.find_wrapper_by_id(args["id"])
+        instance = LiveSend.find_wrapper_by_id(args["id"])
         instance.defer_action(instance.apply_send_value, args["value"])
 
     def apply_param_value(self, value):
@@ -50,4 +50,4 @@ class PyroSend(PyroWrapper):
     # Outgoing
     # --------
     def send_updated(self):
-        self.update(PyroSend.SEND_UPDATED, self.handle().value)
+        self.update(LiveSend.SEND_UPDATED, self.handle().value)
