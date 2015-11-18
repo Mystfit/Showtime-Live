@@ -1,7 +1,7 @@
 #!python
 import sys, time
 from optparse import OptionParser
-from Showtime_Live.PyroBridge.LiveRouter import LiveRouter
+from Showtime_Live.LiveRouter import LiveRouter
 
 # Options parser
 parser = OptionParser()

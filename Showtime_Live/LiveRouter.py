@@ -1,5 +1,5 @@
 import sys, threading, os, Queue
-sys.path.append(os.path.join(os.path.dirname(__file__), "../Midi_Remote_Scripts"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
 
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
@@ -7,7 +7,7 @@ from Showtime.zst_method import ZstMethod
 from ShowtimeBridge.PyroShared import PyroPrefixes
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint, SimpleMessage
 
-import Showtime_Live.MidiRouter
+import MidiRouter
 from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
 
 
@@ -35,7 +35,7 @@ class LiveRouter(UDPEndpoint):
 
     def __init__(self, stageaddress, midiportindex):
         UDPEndpoint.__init__(self, 6001, 6002)
-        self.midiRouter = Showtime_Live.MidiRouter.MidiRouter(midiportindex)
+        self.midiRouter = MidiRouter.MidiRouter(midiportindex)
 
         if not self.midiRouter.midiActive():
             print("--- No midi loopback port available, incoming messages to Ableton will be considerably slower")
