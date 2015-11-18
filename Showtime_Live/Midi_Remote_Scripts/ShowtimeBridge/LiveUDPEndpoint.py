@@ -1,34 +1,38 @@
 import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
-
-from Pyro.EventService.Clients import Subscriber
 from PyroShared import PyroPrefixes
 from Logger import Log
+from UDPEndpoint import UDPEndpoint, SimpleMessage
 
-# Event listener class for recieving/parsing messages from Live
-class LiveSubscriber(Subscriber):
+class LiveUDPEndpoint(UDPEndpoint):
 
-    def __init__(self, publisher):
-        Subscriber.__init__(self)
-        self.setThreading(False)
-
-        self.publisher = publisher
+    def __init__(self, localPort, remotePort, threading):
         self.requestLock = True
         self.incomingSubscriptions = {}
+        UDPEndpoint.__init__(self, localPort, remotePort, threading)
 
     def add_incoming_action(self, action, cls, callback):
         self.incomingSubscriptions[PyroPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
-        self.subscribe(self.incomingSubscriptions.keys())
+
+    def send_to_showtime(self, message, args, responding=False):
+        if responding:
+            pass
+        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_outgoing(message), args))
+
+    def send_to_live(self, message, args):
+        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_incoming(message), args))
+
+    def register_to_showtime(self, message, methodaccess, methodargs=None):
+        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_registration(message), {"args": methodargs, "methodaccess": methodaccess}))
 
     def handle_requests(self):
         requestCounter = 0
 
-        # Loop through all messages in the Pyro queue till it's empty
+        # Loop through all messages in the socket till it's empty
         # If the lock is active, then the queue is not empty
         while self.requestLock:
             self.requestLock = False
             try:
-                self.getDaemon().handleRequests(0)
+                self.recv_msg()
             except Exception, e:
                 print e
             requestCounter += 1

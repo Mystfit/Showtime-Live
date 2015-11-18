@@ -1,7 +1,3 @@
-from Pyro.EventService.Clients import Subscriber
-import Pyro.core
-import Pyro.errors
-
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
@@ -12,10 +8,10 @@ import os
 import Queue
 sys.path.append(os.path.join(os.path.dirname(__file__), "../Midi_Remote_Scripts"))
 
-# from ShowtimeBridge.LiveWrappers.PyroTrack import PyroTrackActions
-
 from ShowtimeBridge.LivePublisher import LivePublisher
 from ShowtimeBridge.PyroShared import PyroPrefixes
+from ShowtimeBridge.UDPEndpoint import UDPEndpoint
+
 import Showtime_Live.MidiRouter
 from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
 
@@ -40,12 +36,10 @@ class RegistrationThread(threading.Thread):
             self.node.request_register_method(req[0], req[1], req[2], req[3])
         self.join(2)
 
-class LiveRouter(Subscriber):
-    def __init__(self, stageaddress, midiportindex):
-        Subscriber.__init__(self)
-        self.setThreading(True)
+class LiveRouter(UDPEndpoint):
 
-        self.publisher = LivePublisher()
+    def __init__(self, stageaddress, midiportindex):
+        UDPEndpoint.__init__(self, 6001, 6002)
         self.midiRouter = Showtime_Live.MidiRouter.MidiRouter(midiportindex)
 
         if not self.midiRouter.midiActive():
@@ -64,7 +58,6 @@ class LiveRouter(Subscriber):
         self.node.start()
         self.node.request_register_node()
         self.register_methods()
-        self.subscribeMatch('[^' + PyroPrefixes.DELIMITER + ']*')
         self.registrar = RegistrationThread(self.node)
         self.registrar.daemon = True
         self.registrar.start()
@@ -74,8 +67,8 @@ class LiveRouter(Subscriber):
         self.node.close()
         if(hasattr(self, "stageNode")):
             self.stageNode.close()
-        self.getDaemon().shutdown(True)
         self.midiRouter.close()
+        UDPEndpoint.close(self)
 
     def register_methods(self):
         if(self.midiRouter.midiActive()):

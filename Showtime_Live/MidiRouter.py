@@ -1,7 +1,4 @@
-try:
-    import rtmidi_python as rtmidi
-except ImportError:
-    import rtmidi
+import rtmidi_python as rtmidi
 import threading
 import time
 import platform

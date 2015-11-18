@@ -1,12 +1,6 @@
 #!python
-
-import sys
-import Pyro.util
-import Pyro.core
-from Pyro.errors import NamingError
+import sys, time
 from optparse import OptionParser
-
-import Showtime_Live.PyroBridge.PyroServerStarter
 from Showtime_Live.PyroBridge.LiveRouter import LiveRouter
 
 # Options parser
@@ -24,22 +18,20 @@ if options.listmidiports:
     midiRouter.listMidiPorts()
     sys.exit(0)
 
-#Server startup
-Showtime_Live.PyroBridge.PyroServerStarter.startServer()
-
-#Event listener
-Pyro.core.initClient()
-
-# Set up Pyro/Showtime router
+# Set up message router
 stageaddress = options.stageaddress
 if stageaddress:
     stageaddress += ":" + str(options.stageport)
 
 showtimeRouter = LiveRouter(stageaddress, options.midiportindex)
+showtimeRouter.start()
+print "Server up!"
 
 # Enter into the idle loop to handle messages
+
 try:
-    showtimeRouter.listen()
+    while 1:
+        time.sleep(1)
 except KeyboardInterrupt:
     print "\nExiting..."
     showtimeRouter.close()

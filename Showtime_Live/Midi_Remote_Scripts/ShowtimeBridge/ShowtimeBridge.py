@@ -6,12 +6,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 
 import encodings
 
-# Import pyro
-import Pyro.naming
-import Pyro.errors
-import Pyro.core
-Pyro.config.PYRO_STORAGE = "/tmp"
-
 # Import Live libraries
 import Live
 from _Framework.ControlSurface import ControlSurface
@@ -21,8 +15,6 @@ from _Framework.EncoderElement import EncoderElement
 from LiveUtils import *
 from ControlSurfaceComponents import *
 from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
-from LiveSubscriber import LiveSubscriber
-from LivePublisher import LivePublisher
 
 from LiveWrappers.PyroWrapper import PyroWrapper
 from LiveWrappers.PyroDevice import PyroDevice
@@ -31,11 +23,11 @@ from LiveWrappers.PyroSend import PyroSend
 from LiveWrappers.PyroSong import PyroSong
 from LiveWrappers.PyroTrack import PyroTrack
 
+from LiveUDPEndpoint import LiveUDPEndpoint
 from Logger import Log
 
 
 class ShowtimeBridge(ControlSurface):
-
     def __init__(self, c_instance):
         ControlSurface.__init__(self, c_instance)
         with self.component_guard():
@@ -48,7 +40,7 @@ class ShowtimeBridge(ControlSurface):
             Log.write("ShowtimeBridge starting")
             Log.info(sys.version)
 
-            self.initPyroServer()
+            self.initServer()
 
             # Register methods to the showtimebridge server
             wrapperClasses = PyroWrapper.__subclasses__()
@@ -74,18 +66,11 @@ class ShowtimeBridge(ControlSurface):
             self.refresh_state()
             self._suppress_send_midi = False
 
-    def initPyroServer(self):
-        Pyro.config.PYRO_ES_BLOCKQUEUE = False
-
-        # Event listener
-        Pyro.core.initClient()
-
-        # Create publisher and subscriber links to event server
-        self.publisher = LivePublisher()
-        self.subscriber = LiveSubscriber(self.publisher)
+    def initServer(self):
+        self.endpoint = LiveUDPEndpoint(6002, 6001, False)
 
         # Set the global publisher for all wrappers
-        PyroWrapper.set_publisher(self.publisher)
+        PyroWrapper.set_publisher(self.endpoint)
 
     def disconnect(self):
         self._suppress_send_midi = True
@@ -115,5 +100,5 @@ class ShowtimeBridge(ControlSurface):
         ControlSurface.update_display(self)
 
     def requestLoop(self):
-        self.subscriber.handle_requests()
+        self.endpoint.handle_requests()
         PyroWrapper.process_deferred_actions()
