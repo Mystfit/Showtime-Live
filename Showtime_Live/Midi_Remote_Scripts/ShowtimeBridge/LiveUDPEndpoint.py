@@ -1,5 +1,5 @@
 import sys, os
-from PyroShared import PyroPrefixes
+from NetworkShared import NetworkPrefixes
 from Logger import Log
 from UDPEndpoint import UDPEndpoint, SimpleMessage
 
@@ -11,15 +11,15 @@ class LiveUDPEndpoint(UDPEndpoint):
         UDPEndpoint.__init__(self, localPort, remotePort, threading)
 
     def add_incoming_action(self, action, cls, callback):
-        self.incomingSubscriptions[PyroPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
+        self.incomingSubscriptions[NetworkPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
 
     def send_to_showtime(self, message, args, responding=False):
         if responding:
             pass
-        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_outgoing(message), args))
+        return self.send_msg(SimpleMessage(NetworkPrefixes.prefix_outgoing(message), args))
 
     def register_to_showtime(self, message, methodaccess, methodargs=None):
-        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_registration(message), {"args": methodargs, "methodaccess": methodaccess}))
+        return self.send_msg(SimpleMessage(NetworkPrefixes.prefix_registration(message), {"args": methodargs, "methodaccess": methodaccess}))
 
     def handle_requests(self):
         requestCounter = 0

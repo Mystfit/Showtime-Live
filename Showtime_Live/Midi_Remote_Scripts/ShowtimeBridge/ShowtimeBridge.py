@@ -14,7 +14,7 @@ from _Framework.EncoderElement import EncoderElement
 # Import custom live objects
 from LiveUtils import *
 from ControlSurfaceComponents import *
-from ControlSurfaceComponents.PyroEncoderElement import PyroEncoderElement
+from ControlSurfaceComponents.LoopingEncoderElement import LoopingEncoderElement
 
 from LiveWrappers.LiveWrapper import LiveWrapper
 from LiveWrappers.LiveDevice import LiveDevice
@@ -58,7 +58,7 @@ class ShowtimeBridge(ControlSurface):
                     self.endpoint.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check
-            self.clock = PyroEncoderElement(0, 119)
+            self.clock = LoopingEncoderElement(0, 119)
 
             # Create the root wrapper
             LiveSong.add_instance(LiveSong(getSong()))
@@ -96,7 +96,7 @@ class ShowtimeBridge(ControlSurface):
         return Live.MidiMap.MapMode.absolute
 
     def update_display(self):
-        #Call the pyro request handler so that messages will always be accepted
+        #Call the request handler so that messages will always be accepted
         self.requestLoop()
         ControlSurface.update_display(self)
 

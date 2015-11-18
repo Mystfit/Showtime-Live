@@ -45,14 +45,14 @@ class LiveSong(LiveWrapper):
     # --------
     def song_time_updated(self):
         meterLevels = {}
-        for track in PyroTrack.instances():
+        for track in LiveTrack.instances():
             if track:
                 if track.handle():
                     if track.handle().has_midi_output:
                         Utils.truncate_float(track.handle().output_meter_level, 4)
                     else:
                         meterLevels[track.id()] = Utils.truncate_float(((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5), 4)
-        self.update(PyroSong.SONG_METERS, meterLevels)
+        self.update(LiveSong.SONG_METERS, meterLevels)
 
     # --------
     # Incoming

@@ -4,7 +4,7 @@ from _Framework.InputControlElement import InputControlElement, MIDI_SYSEX_TYPE
 from _Framework.Util import *
 
 
-class PyroEncoderElement(EncoderElement):
+class LoopingEncoderElement(EncoderElement):
 
     def __init__(self, channel, identifier, parameter=None, parametertuple=None):
         EncoderElement.__init__(self, msg_type=MIDI_CC_TYPE, channel=channel, identifier=identifier, map_mode=Live.MidiMap.MapMode.absolute)

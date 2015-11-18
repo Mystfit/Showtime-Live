@@ -1,6 +1,6 @@
 # Message prefixes
 
-class PyroPrefixes:
+class NetworkPrefixes:
     INCOMING = "I"
     OUTGOING = "O"
     RESPONDER = "L"
@@ -10,24 +10,24 @@ class PyroPrefixes:
 
     @staticmethod
     def prefix_outgoing(name):
-        return PyroPrefixes.OUTGOING + PyroPrefixes.prefix_name(name)
+        return NetworkPrefixes.OUTGOING + NetworkPrefixes.prefix_name(name)
 
     @staticmethod
     def prefix_incoming(name):
-        return PyroPrefixes.INCOMING + PyroPrefixes.prefix_name(name)
+        return NetworkPrefixes.INCOMING + NetworkPrefixes.prefix_name(name)
 
     @staticmethod
     def prefix_responder(name):
-        return PyroPrefixes.RESPONDER + PyroPrefixes.prefix_name(name)
+        return NetworkPrefixes.RESPONDER + NetworkPrefixes.prefix_name(name)
     
     # @staticmethod
     # def prefix_passthrough(name):
-    #     return PyroPrefixes.PASSTHROUGH + PyroPrefixes.prefix_name(name)
+    #     return NetworkPrefixes.PASSTHROUGH + NetworkPrefixes.prefix_name(name)
     
     @staticmethod
     def prefix_registration(name):
-        return PyroPrefixes.REGISTRATION + PyroPrefixes.prefix_name(name)
+        return NetworkPrefixes.REGISTRATION + NetworkPrefixes.prefix_name(name)
 
     @staticmethod
     def prefix_name(name):
-        return PyroPrefixes.DELIMITER + name
+        return NetworkPrefixes.DELIMITER + name

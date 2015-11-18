@@ -223,7 +223,7 @@ class LiveWrapper(object):
             Log.warn("Outgoing method aready exists")
             return
 
-        cls._outgoing_methods[methodname] = PyroMethodDef(methodname, LiveWrapper.METHOD_READ)
+        cls._outgoing_methods[methodname] = LiveMethodDef(methodname, LiveWrapper.METHOD_READ)
 
     @classmethod
     def add_incoming_method(cls, methodname, methodargs, callback, isResponder=False):
@@ -239,7 +239,7 @@ class LiveWrapper(object):
                 methodargkeys[key] = None
 
         accessType = LiveWrapper.METHOD_RESPOND if isResponder else LiveWrapper.METHOD_WRITE
-        cls._incoming_methods[methodname] = PyroMethodDef(methodname, accessType, methodargkeys, callback)
+        cls._incoming_methods[methodname] = LiveMethodDef(methodname, accessType, methodargkeys, callback)
 
 
     # Network
@@ -392,7 +392,7 @@ class LiveWrapper(object):
         LiveWrapper._layout_updates[:] = []
 
 
-class PyroMethodDef:
+class LiveMethodDef:
     def __init__(self, methodname, methodAccess, methodargs=None, callback=None):
         self.methodName = methodname
         self.methodAccess = methodAccess

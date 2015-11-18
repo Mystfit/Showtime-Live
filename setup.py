@@ -40,7 +40,7 @@ setup(name='Showtime-Live',
       url='http://github.com/Mystfit/Showtime-Live',
       scripts=['scripts/LiveShowtimeClient.py'],
       license='MIT',
-      install_requires=["Showtime-Python", "rtmidi_python", "Pyro<=3.16", "zeroconf"],
+      install_requires=["Showtime-Python", "rtmidi_python", "zeroconf"],
       packages=find_packages()
       )
 

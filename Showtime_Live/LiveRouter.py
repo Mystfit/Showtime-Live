@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
-from ShowtimeBridge.PyroShared import PyroPrefixes
+from ShowtimeBridge.NetworkShared import NetworkPrefixes
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint, SimpleMessage
 
 import MidiRouter
@@ -79,11 +79,11 @@ class LiveRouter(UDPEndpoint):
 
     def event(self, event):
         methodName = event.subject[2:]
-        pyroType = event.subject[:1]
+        msgType = event.subject[:1]
 
-        if pyroType == PyroPrefixes.REGISTRATION:
+        if msgType == NetworkPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
-        elif pyroType == PyroPrefixes.OUTGOING or pyroType == PyroPrefixes.RESPONDER:
+        elif msgType == NetworkPrefixes.OUTGOING or msgType == NetworkPrefixes.RESPONDER:
             # print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)
@@ -96,4 +96,4 @@ class LiveRouter(UDPEndpoint):
         self.send_to_live(message.name, args)
 
     def send_to_live(self, message, args):
-        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_incoming(message), args))
+        return self.send_msg(SimpleMessage(NetworkPrefixes.prefix_incoming(message), args))
