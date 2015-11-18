@@ -50,12 +50,12 @@ class ShowtimeBridge(ControlSurface):
                 cls.register_methods()
                 for action in cls.incoming_methods().values():
                     Log.info("Adding %s to incoming callbacks" % action.methodName)
-                    self.subscriber.add_incoming_action(action.methodName, cls, action.callback)
-                    self.publisher.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
+                    self.endpoint.add_incoming_action(action.methodName, cls, action.callback)
+                    self.endpoint.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
 
                 for action in cls.outgoing_methods().values():
                     Log.info("Adding %s to outgoing methods" % action.methodName)
-                    self.publisher.register_to_showtime(action.methodName, action.methodAccess)
+                    self.endpoint.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check
             self.clock = PyroEncoderElement(0, 119)
@@ -75,6 +75,7 @@ class ShowtimeBridge(ControlSurface):
     def disconnect(self):
         self._suppress_send_midi = True
         self._suppress_send_midi = False
+        self.endpoint.close()
         ControlSurface.disconnect(self)
 
     def refresh_state(self):

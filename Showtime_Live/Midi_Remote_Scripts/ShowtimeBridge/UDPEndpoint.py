@@ -49,13 +49,13 @@ class UDPEndpoint(threading.Thread):
 
     def recv_msg(self):
         if self.threaded:
-            self.event(SimpleMessage.parse(self.recv_sock.recvfrom(maxMsgSize)))
+            self.event(SimpleMessage.parse(self.recv_sock.recv(maxMsgSize)))
         else:
             try:
                 while 1:
-                    self.event(SimpleMessage.parse(self.recv_sock.recvfrom(maxMsgSize)))
+                    self.event(SimpleMessage.parse(self.recv_sock.recv(maxMsgSize)))
             except Exception, e:
-                err, message=e
+                err, message = e
                 if err != errno.EAGAIN:                                
                     print('error handling message, errno ' + str(errno) + ': ' + message)
 
@@ -69,8 +69,12 @@ class SimpleMessage:
         self.msg = message if message else {}
 
     def __str__(self):
-        return json.dumps([self.subject, self.message])
+        return json.dumps([self.subject, self.msg])
 
+    def __len__(self):
+        return len(str(self))
+
+    @staticmethod
     def parse(rawMsg):
         jsonmsg = json.loads(rawMsg)
         return SimpleMessage(jsonmsg[0], jsonmsg[1])

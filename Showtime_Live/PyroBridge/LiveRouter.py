@@ -1,16 +1,11 @@
+import sys, threading, os, Queue
+sys.path.append(os.path.join(os.path.dirname(__file__), "../Midi_Remote_Scripts"))
+
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
-
-import sys
-import threading
-import os
-import Queue
-sys.path.append(os.path.join(os.path.dirname(__file__), "../Midi_Remote_Scripts"))
-
-from ShowtimeBridge.LivePublisher import LivePublisher
 from ShowtimeBridge.PyroShared import PyroPrefixes
-from ShowtimeBridge.UDPEndpoint import UDPEndpoint
+from ShowtimeBridge.UDPEndpoint import UDPEndpoint, SimpleMessage
 
 import Showtime_Live.MidiRouter
 from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
@@ -90,13 +85,16 @@ class LiveRouter(UDPEndpoint):
         if pyroType == PyroPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
         elif pyroType == PyroPrefixes.OUTGOING or pyroType == PyroPrefixes.RESPONDER:
-            print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
+            # print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)
             else:
                 print "Outgoing method not registered!"
 
     def incoming(self, message):
-        print "ST-->Live: " + str(message.name)
+        # print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
-        self.publisher.send_to_live(message.name, args)
+        self.send_to_live(message.name, args)
+
+    def send_to_live(self, message, args):
+        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_incoming(message), args))

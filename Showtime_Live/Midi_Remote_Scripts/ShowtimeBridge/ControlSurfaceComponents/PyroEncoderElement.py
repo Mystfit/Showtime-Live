@@ -2,7 +2,6 @@ import Live
 from _Framework.EncoderElement import *
 from _Framework.InputControlElement import InputControlElement, MIDI_SYSEX_TYPE
 from _Framework.Util import *
-import Pyro.errors
 
 
 class PyroEncoderElement(EncoderElement):

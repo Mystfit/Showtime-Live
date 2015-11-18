@@ -18,9 +18,6 @@ class LiveUDPEndpoint(UDPEndpoint):
             pass
         return self.send_msg(SimpleMessage(PyroPrefixes.prefix_outgoing(message), args))
 
-    def send_to_live(self, message, args):
-        return self.send_msg(SimpleMessage(PyroPrefixes.prefix_incoming(message), args))
-
     def register_to_showtime(self, message, methodaccess, methodargs=None):
         return self.send_msg(SimpleMessage(PyroPrefixes.prefix_registration(message), {"args": methodargs, "methodaccess": methodaccess}))
 
