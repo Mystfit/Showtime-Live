@@ -24,7 +24,6 @@ if stageaddress:
     stageaddress += ":" + str(options.stageport)
 
 showtimeRouter = LiveRouter(stageaddress, options.midiportindex)
-showtimeRouter.start()
 print "Server up!"
 
 # Enter into the idle loop to handle messages

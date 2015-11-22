@@ -4,8 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
-from ShowtimeBridge.NetworkShared import NetworkPrefixes
-from ShowtimeBridge.UDPEndpoint import UDPEndpoint, SimpleMessage
+from ShowtimeBridge.NetworkEndpoint import NetworkEndpoint, SimpleMessage, NetworkPrefixes
 
 import MidiRouter
 from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
@@ -31,9 +30,10 @@ class RegistrationThread(threading.Thread):
             self.node.request_register_method(req[0], req[1], req[2], req[3])
         self.join(2)
 
-class LiveRouter(UDPEndpoint):
+
+class LiveRouter():
     def __init__(self, stageaddress, midiportindex):
-        UDPEndpoint.__init__(self, 6001, 6002)
+        
         self.midiRouter = MidiRouter.MidiRouter(midiportindex)
 
         if not self.midiRouter.midiActive():
@@ -51,10 +51,20 @@ class LiveRouter(UDPEndpoint):
         self.node = ZstNode("LiveNode", stageaddress)
         self.node.start()
         self.node.request_register_node()
+
+        # Create registration thread
         self.register_methods()
         self.registrar = RegistrationThread(self.node)
         self.registrar.daemon = True
         self.registrar.start()
+
+        # Create sockets
+        self.tcpEndpoint = NetworkEndpoint(6003, 6004, NetworkEndpoint.TCP)
+        self.udpEndpoint = NetworkEndpoint(6001, 6002, NetworkEndpoint.UDP)
+        self.tcpEndpoint.event = self.event
+        self.udpEndpoint.event = self.event
+        self.tcpEndpoint.start()
+        self.udpEndpoint.start()
 
     def close(self):
         self.registrar.stop()
@@ -62,7 +72,8 @@ class LiveRouter(UDPEndpoint):
         if(hasattr(self, "stageNode")):
             self.stageNode.close()
         self.midiRouter.close()
-        UDPEndpoint.close(self)
+        self.tcpEndpoint.close(self)
+        self.udpEndpoint.close(self)
 
     def register_methods(self):
         if(self.midiRouter.midiActive()):

@@ -1,14 +1,12 @@
 import sys, os
-from NetworkShared import NetworkPrefixes
 from Logger import Log
-from UDPEndpoint import UDPEndpoint, SimpleMessage
+from NetworkEndpoint import NetworkEndpoint, SimpleMessage, NetworkPrefixes
 
-class LiveUDPEndpoint(UDPEndpoint):
-
-    def __init__(self, localPort, remotePort, threading):
+class LiveNetworkEndpoint(NetworkEndpoint):
+    def __init__(self, localPort, remotePort, socketType, threading):
         self.requestLock = True
         self.incomingSubscriptions = {}
-        UDPEndpoint.__init__(self, localPort, remotePort, threading)
+        NetworkEndpoint.__init__(self, localPort, remotePort, socketType, threading)
 
     def add_incoming_action(self, action, cls, callback):
         self.incomingSubscriptions[NetworkPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
@@ -37,7 +35,12 @@ class LiveUDPEndpoint(UDPEndpoint):
         if requestCounter > 10:
             Log.warn(str(requestCounter) + " loops to clear queue")
 
+        self.send_heartbeat()
+        self.check_heartbeat()
+
     def event(self, event):
+        NetworkEndpoint.event(self, event)
+
         self.requestLock = True     # Lock the request loop
         Log.info("Received method " + event.subject[2:])
         Log.info("Args are:" + str(event.msg)) 

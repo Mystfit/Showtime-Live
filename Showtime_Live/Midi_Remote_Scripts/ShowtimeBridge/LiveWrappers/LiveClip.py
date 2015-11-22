@@ -63,7 +63,7 @@ class LiveClip(LiveWrapper):
     # Outgoing
     # --------
     def notes_updated(self):
-        self.update(LiveClip.CLIP_NOTES_UPDATED, self.handle().get_notes(0.0, 0, self.handle().length, 127))
+        self.respond(LiveClip.CLIP_NOTES_UPDATED, self.handle().get_notes(0.0, 0, self.handle().length, 127))
 
     def playing_position(self):
         self.update(LiveClip.CLIP_PLAYING_POSITION, Utils.truncate_float(self.handle().playing_position, 4))

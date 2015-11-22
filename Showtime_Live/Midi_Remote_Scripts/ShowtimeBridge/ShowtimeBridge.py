@@ -1,7 +1,6 @@
 from __future__ import with_statement
 
-import sys
-import os
+import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
 
 import encodings
@@ -23,7 +22,7 @@ from LiveWrappers.LiveSend import LiveSend
 from LiveWrappers.LiveSong import LiveSong
 from LiveWrappers.LiveTrack import LiveTrack
 
-from LiveUDPEndpoint import LiveUDPEndpoint
+from LiveNetworkEndpoint import LiveNetworkEndpoint
 from Logger import Log
 
 
@@ -38,6 +37,7 @@ class ShowtimeBridge(ControlSurface):
             Log.set_log_level(Log.LOG_WARN)
             Log.write("-----------------------")
             Log.write("ShowtimeBridge starting")
+            Log.write("Python version " + sys.version)
             Log.info(sys.version)
 
             self.initServer()
@@ -50,12 +50,13 @@ class ShowtimeBridge(ControlSurface):
                 cls.register_methods()
                 for action in cls.incoming_methods().values():
                     Log.info("Adding %s to incoming callbacks" % action.methodName)
-                    self.endpoint.add_incoming_action(action.methodName, cls, action.callback)
-                    self.endpoint.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
+                    self.udpEndpoint.add_incoming_action(action.methodName, cls, action.callback)
+                    self.tcpEndpoint.add_incoming_action(action.methodName, cls, action.callback)
+                    self.tcpEndpoint.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
 
                 for action in cls.outgoing_methods().values():
                     Log.info("Adding %s to outgoing methods" % action.methodName)
-                    self.endpoint.register_to_showtime(action.methodName, action.methodAccess)
+                    self.tcpEndpoint.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check
             self.clock = LoopingEncoderElement(0, 119)
@@ -67,10 +68,13 @@ class ShowtimeBridge(ControlSurface):
             self._suppress_send_midi = False
 
     def initServer(self):
-        self.endpoint = LiveUDPEndpoint(6002, 6001, False)
+        self.udpEndpoint = LiveNetworkEndpoint(6002, 6001, LiveNetworkEndpoint.UDP, False)
+        self.tcpEndpoint = LiveNetworkEndpoint(6004, 6003, LiveNetworkEndpoint.TCP, False)
 
         # Set the global publisher for all wrappers
-        LiveWrapper.set_publisher(self.endpoint)
+        LiveWrapper.set_reliable_publisher(self.tcpEndpoint)
+        LiveWrapper.set_fast_publisher(self.udpEndpoint)
+
 
     def disconnect(self):
         self._suppress_send_midi = True
@@ -101,5 +105,5 @@ class ShowtimeBridge(ControlSurface):
         ControlSurface.update_display(self)
 
     def requestLoop(self):
-        self.endpoint.handle_requests()
+        self.udpEndpoint.handle_requests()
         LiveWrapper.process_deferred_actions()

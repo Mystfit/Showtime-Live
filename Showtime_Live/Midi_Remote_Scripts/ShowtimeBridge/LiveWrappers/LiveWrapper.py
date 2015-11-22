@@ -245,9 +245,14 @@ class LiveWrapper(object):
     # Network
     # -------
     @staticmethod
-    def set_publisher(publisher):
+    def set_reliable_publisher(publisher):
         """Set the global publisher for all wrappers"""
-        LiveWrapper._publisher = publisher
+        LiveWrapper._tcppublisher = publisher
+
+    @staticmethod
+    def set_fast_publisher(publisher):
+        """Set the global publisher for all wrappers"""
+        LiveWrapper._udppublisher = publisher
 
     @staticmethod
     def register_methods():
@@ -286,12 +291,12 @@ class LiveWrapper(object):
     def update(self, action, values=None):
         """Send the updated wrapper value to the network"""
         val = {"value": values, "id": self.id()}
-        LiveWrapper._publisher.send_to_showtime(action, val)
+        LiveWrapper._udppublisher.send_to_showtime(action, val)
 
     def respond(self, action, values):
         """Send the updated wrapper value to the network""" 
         val = {"value": values, "id": self.id()}
-        LiveWrapper._publisher.send_to_showtime(action, val, True)
+        LiveWrapper._tcppublisher.send_to_showtime(action, val, True)
 
 
     # ID methods
