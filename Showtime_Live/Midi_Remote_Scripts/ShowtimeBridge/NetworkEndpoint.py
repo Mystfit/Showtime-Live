@@ -55,12 +55,13 @@ class SimpleMessage:
 
 
 class NetworkEndpoint(threading.Thread):
+    MAX_MSG_SIZE = 65536
 
     def __init__(self, localPort, remotePort, threaded=True):
         self.threaded = threaded
-        self.localAddr = (("127.0.0.1"), localPort)
+        self.localAddr = ((''), localPort)
         self.remoteAddr = (("127.0.0.1"), remotePort)
-        self.socketType = socketType
+        self.eventCallbacks = set()
         
         self.send_sock = None
         self.recv_sock = None
@@ -87,27 +88,45 @@ class NetworkEndpoint(threading.Thread):
     def stop(self):
         self.exitFlag = 1
 
+    def add_event_callback(self, callback):
+        self.eventCallbacks.add(callback)
+
+    def remote_event_callback(self, callback):
+        self.eventCallbacks.remove(callback)
+
     def send_msg(self, msg):
-        ret = self.send_sock.sendto(str(msg), self.remoteAddr)
-        if (ret == -1):
-            print("Error sending message %s:%d" % (msg, ret))
-        if (ret != len(msg)):
-            print("Partial send of message %s:%d of %d" % (msg, ret, len(msg)))
+        if self.send_sock:
+            ret = self.send_sock.sendto(str(msg), self.remoteAddr)
+            if (ret == -1):
+                print("Error sending message %s:%d" % (msg, ret))
+            if (ret != len(msg)):
+                print("Partial send of message %s:%d of %d" % (msg, ret, len(msg)))
+        return ret
 
     def recv_msg(self):
         if self.threaded:
-            self.event(SimpleMessage.parse(self.recv_sock.recv(NetworkEndpoint.MAX_MSG_SIZE)))
+            raw = self.recv_sock.recv(NetworkEndpoint.MAX_MSG_SIZE)
+            msg = SimpleMessage.parse(raw)
+            if not msg.subject == "H":
+                print msg
+            self.event(msg)
         else:
             try:
                 while 1:
-                    self.event(SimpleMessage.parse(self.recv_sock.recv(NetworkEndpoint.MAX_MSG_SIZE)))
+                    raw = self.recv_sock.recv(NetworkEndpoint.MAX_MSG_SIZE)
+                    msg = SimpleMessage.parse(raw)
+                    self.event(msg)
             except Exception, e:
                 err, message = e
                 if err != errno.EAGAIN:                                
                     print('error handling message, errno ' + str(errno) + ': ' + message)
 
     def event(self, event):
-        raise NotImplementedError
+        print ("Received event!")
+        print ("Available callbacks:" + str(self.eventCallbacks))
+        for callback in self.eventCallbacks:
+            print("Running callback " + str(callback))
+            callback(event)
 
     @staticmethod
     def current_milli_time():

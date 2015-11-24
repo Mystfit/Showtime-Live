@@ -24,6 +24,7 @@ if stageaddress:
     stageaddress += ":" + str(options.stageport)
 
 showtimeRouter = LiveRouter(stageaddress, options.midiportindex)
+showtimeRouter.start()
 print "Server up!"
 
 # Enter into the idle loop to handle messages
@@ -33,4 +34,4 @@ try:
         time.sleep(1)
 except KeyboardInterrupt:
     print "\nExiting..."
-    showtimeRouter.close()
+    showtimeRouter.stop()

@@ -25,7 +25,7 @@ class LiveWrapper(object):
     _instances = {}
 
     # Publisher for all wrappers
-    _publisher = None
+    _endpoint = None
 
     # Queued wrapper events
     _deferred_actions = {}
@@ -221,7 +221,7 @@ class LiveWrapper(object):
         """Registers a method for this wrapper that will publish to the network"""
         if methodname in cls._outgoing_methods:
             Log.warn("Outgoing method aready exists")
-            return
+            # return
 
         cls._outgoing_methods[methodname] = LiveMethodDef(methodname, LiveWrapper.METHOD_READ)
 
@@ -245,14 +245,9 @@ class LiveWrapper(object):
     # Network
     # -------
     @staticmethod
-    def set_reliable_publisher(publisher):
+    def set_endpoint(endpoint):
         """Set the global publisher for all wrappers"""
-        LiveWrapper._tcppublisher = publisher
-
-    @staticmethod
-    def set_fast_publisher(publisher):
-        """Set the global publisher for all wrappers"""
-        LiveWrapper._udppublisher = publisher
+        LiveWrapper._endpoint = endpoint
 
     @staticmethod
     def register_methods():
@@ -291,12 +286,12 @@ class LiveWrapper(object):
     def update(self, action, values=None):
         """Send the updated wrapper value to the network"""
         val = {"value": values, "id": self.id()}
-        LiveWrapper._udppublisher.send_to_showtime(action, val)
+        LiveWrapper._endpoint.send_to_showtime(action, val)
 
     def respond(self, action, values):
         """Send the updated wrapper value to the network""" 
         val = {"value": values, "id": self.id()}
-        LiveWrapper._tcppublisher.send_to_showtime(action, val, True)
+        LiveWrapper._endpoint.send_to_showtime(action, val, True)
 
 
     # ID methods
@@ -393,7 +388,7 @@ class LiveWrapper(object):
 
     @staticmethod
     def send_layout_diff(args):
-        LiveWrapper._publisher.send_to_showtime(LiveWrapper.LAYOUT_UPDATED, {"val": LiveWrapper._layout_updates})
+        LiveWrapper._endpoint.send_to_showtime(LiveWrapper.LAYOUT_UPDATED, {"val": LiveWrapper._layout_updates}, True)
         LiveWrapper._layout_updates[:] = []
 
 
