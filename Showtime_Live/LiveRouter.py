@@ -1,4 +1,4 @@
-import sys, threading, os, Queue, time
+import sys, threading, os, Queue, time, select, socket
 sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
 
 from Showtime.zst_node import ZstNode
@@ -66,18 +66,55 @@ class LiveRouter(threading.Thread):
         self.registrar.start()
 
         # Create sockets
-        self.tcpEndpoint = TCPEndpoint(6003, 6004, True)
+        self.tcpEndpoint = TCPEndpoint(6003, 6004, True, True)
         self.udpEndpoint = UDPEndpoint(6001, 6002, True)
         self.tcpEndpoint.add_event_callback(self.event)
         self.udpEndpoint.add_event_callback(self.event)
-        self.tcpEndpoint.start()
-        self.udpEndpoint.start()
+        self.tcpEndpoint.add_ready_callback(self.endpoint_ready)
+        self.udpEndpoint.add_ready_callback(self.endpoint_ready)
+        self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
+        self.outputSockets = {}
 
     def run(self):
         while not self.exitFlag:
-            time.sleep(1)
-            self.ensure_server_available()
+            inputready, outputready, exceptready = select.select(self.inputSockets.keys(), self.outputSockets.keys(),[])
+
+            for s in inputready: 
+                if s == self.tcpEndpoint.socket: 
+                    client, address = self.tcpEndpoint.socket.accept() 
+                    print("New client connecting...")
+                    print address
+                    endpoint = TCPEndpoint(-1, -1, True, False)
+                    endpoint.add_event_callback(self.event)
+                    endpoint.add_ready_callback(self.endpoint_ready)
+                    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
+                    client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                    client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    client.setblocking(True)
+                    endpoint.socket = client
+                    self.inputSockets[client] = endpoint
+                elif s == self.udpEndpoint.socket:
+                    self.udpEndpoint.recv_msg()
+                else: 
+                    endpoint = self.inputSockets[s]
+                    try:
+                        endpoint.recv_msg()
+                    except RuntimeError:
+                        print("Client socket closed")
+                        endpoint.close()
+                        del self.inputSockets[endpoint.socket]
+
+            for s in outputready:
+                endpoint = self.outputSockets[s]
+                try:
+                    while 1:
+                        endpoint.send(endpoint.outgoingMailbox.get_nowait())
+                except Queue.Empty:
+                    del self.outputSockets[endpoint.socket]
         self.join(1)
+
+    def endpoint_ready(self, endpoint):
+        self.outputSockets[endpoint.socket] = endpoint
 
     def stop(self):
         self.exitFlag = 1
@@ -106,7 +143,7 @@ class LiveRouter(threading.Thread):
 
     def event(self, event):
         methodName = event.subject[2:]
-        msgType = event.subject[:1]        
+        msgType = event.subject[:1]
 
         if msgType == NetworkPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
@@ -117,22 +154,11 @@ class LiveRouter(threading.Thread):
             else:
                 print "Outgoing method not registered!"
 
-    def ensure_server_available(self):
-        if self.udpEndpoint.peerConnected and not self.tcpEndpoint.peerConnected:
-            print("Heartbeat found! Reconnecting TCP to " + str(self.tcpEndpoint.remoteAddr))
-            if self.tcpEndpoint.connect():
-                print("Reconnected to peer")
-            else:
-                print("TCP not up yet!")
-
-        if not self.udpEndpoint.peerConnected and self.tcpEndpoint.peerConnected:
-            print("Heartbeat lost")
-            self.tcpEndpoint.peerConnected = False
-
     def incoming(self, message):
         # print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
+        print(message)
         self.send_to_live(message.name, args)
 
     def send_to_live(self, message, args):
-        return self.send_msg(SimpleMessage(NetworkPrefixes.prefix_incoming(message), args))
+        return self.udpEndpoint.send_msg(SimpleMessage(NetworkPrefixes.prefix_incoming(message), args))

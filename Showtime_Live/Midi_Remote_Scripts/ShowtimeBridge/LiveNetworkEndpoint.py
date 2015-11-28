@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, select, Queue
 from Logger import Log
 from NetworkEndpoint import SimpleMessage, NetworkPrefixes
 from UDPEndpoint import UDPEndpoint
@@ -12,13 +12,20 @@ class LiveNetworkEndpoint():
         self.incomingActions = {}
         
         self.udpEndpoint = UDPEndpoint(6002, 6001, False)        
-        self.tcpEndpoint = TCPEndpoint(6004, 6003, False)
+        self.tcpEndpoint = TCPEndpoint(6004, 6003, False, False)
         self.udpEndpoint.add_event_callback(self.event)
         self.tcpEndpoint.add_event_callback(self.event)
+        self.udpEndpoint.add_ready_callback(self.endpoint_ready)
+        self.tcpEndpoint.add_ready_callback(self.endpoint_ready)
+        self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
+        self.outputSockets = {}
 
     def close(self):
         self.udpEndpoint.close()
         self.tcpEndpoint.close()
+
+    def endpoint_ready(self, endpoint):
+        self.outputSockets[endpoint.socket] = endpoint
 
     def sync_actions(self):
         # Register methods to the showtimebridge server
@@ -29,11 +36,11 @@ class LiveNetworkEndpoint():
             for action in cls.incoming_methods().values():
                 Log.info("Adding %s to incoming callbacks" % action.methodName)
                 self.add_incoming_action(action.methodName, cls, action.callback)
-                Log.info(self.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs))
+                self.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
 
             for action in cls.outgoing_methods().values():
                 Log.info("Adding %s to outgoing methods" % action.methodName)
-                Log.info(self.register_to_showtime(action.methodName, action.methodAccess))
+                self.register_to_showtime(action.methodName, action.methodAccess)
 
     def add_incoming_action(self, action, cls, callback):
         self.incomingActions[NetworkPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
@@ -51,15 +58,35 @@ class LiveNetworkEndpoint():
             {"args": methodargs, "methodaccess": methodaccess}))
 
     def poll(self):
-        requestCounter = 0
+        self.ensure_server_available()
 
         # Loop through all messages in the socket till it's empty
         # If the lock is active, then the queue is not empty
+        requestCounter = 0
         while self.requestLock:
             self.requestLock = False
             try:
-                self.udpEndpoint.recv_msg()
-                self.tcpEndpoint.recv_msg()
+                # self.udpEndpoint.recv_msg()
+
+                # Handle TCP
+                inputready,outputready,exceptready = select.select(
+                    self.inputSockets.keys(),
+                    self.outputSockets.keys(),
+                    [], 0)
+
+                for s in inputready: 
+                    endpoint = self.inputSockets[s]
+                    endpoint.recv_msg()
+                
+                for s in outputready:
+                    endpoint = self.outputSockets[s]
+                    try:
+                        while 1:
+                            msg = endpoint.outgoingMailbox.get_nowait()
+                            endpoint.send(msg)
+                    except Queue.Empty:
+                        del self.outputSockets[endpoint.socket]
+
             except Exception, e:
                 print e
             requestCounter += 1
@@ -67,8 +94,6 @@ class LiveNetworkEndpoint():
         if requestCounter > 10:
             Log.warn(str(requestCounter) + " loops to clear queue")
 
-        self.udpEndpoint.send_heartbeat()
-        self.ensure_server_available()
         
     def ensure_server_available(self):
         udpActive = self.udpEndpoint.check_heartbeat()
@@ -82,7 +107,7 @@ class LiveNetworkEndpoint():
 
         if not udpActive and self.tcpEndpoint.peerConnected:
             Log.warn("Heartbeat lost")
-            self.tcpEndpoint.peerConnected = False
+            self.tcpEndpoint.close()
 
     def event(self, event):
         self.requestLock = True     # Lock the request loop

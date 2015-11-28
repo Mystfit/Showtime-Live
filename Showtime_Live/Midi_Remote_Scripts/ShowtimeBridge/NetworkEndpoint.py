@@ -2,10 +2,14 @@ import socket
 import threading
 import errno
 import time
+import Queue
+import struct
+
 try:
     import json
 except ImportError:
     import simplejson as json
+from Logger import Log
 
 
 class NetworkPrefixes:
@@ -53,8 +57,7 @@ class SimpleMessage:
         jsonmsg = json.loads(rawMsg)
         return SimpleMessage(jsonmsg[0], jsonmsg[1])
 
-
-class NetworkEndpoint(threading.Thread):
+class NetworkEndpoint():
     MAX_MSG_SIZE = 65536
 
     def __init__(self, localPort, remotePort, threaded=True):
@@ -62,70 +65,109 @@ class NetworkEndpoint(threading.Thread):
         self.localAddr = ((''), localPort)
         self.remoteAddr = (("127.0.0.1"), remotePort)
         self.eventCallbacks = set()
-        
-        self.send_sock = None
-        self.recv_sock = None
+        self.readyCallbacks = set()
+        self.outgoingMailbox = Queue.Queue()
+        self.socket = None
         self.peerConnected = False
+        self.create_socket()
 
-        # Threading
-        if(self.threaded):
-            threading.Thread.__init__(self)
-            self.exitFlag = 0
-            self.daemon = True
+    def create_socket(self):
+        raise NotImplementedError
 
     def close(self):
-        if self.send_sock:
-            self.send_sock.close()
-        if self.recv_sock:
-            self.recv_sock.close()
-
-    def run(self):
-        while not self.exitFlag:
-            self.recv_msg()
-        self.close()
-        self.join(2)
-
-    def stop(self):
-        self.exitFlag = 1
+        if self.socket:
+            self.socket.close()
+        self.peerConnected = False
 
     def add_event_callback(self, callback):
         self.eventCallbacks.add(callback)
 
-    def remote_event_callback(self, callback):
+    def remove_event_callback(self, callback):
         self.eventCallbacks.remove(callback)
 
-    def send_msg(self, msg):
-        if self.send_sock:
-            ret = self.send_sock.sendto(str(msg), self.remoteAddr)
-            if (ret == -1):
-                print("Error sending message %s:%d" % (msg, ret))
-            if (ret != len(msg)):
-                print("Partial send of message %s:%d of %d" % (msg, ret, len(msg)))
-        return ret
+    def add_ready_callback(self, callback):
+        self.readyCallbacks.add(callback)
+
+    def remove_ready_callback(self, callback):
+        self.readyCallbacks.remove(callback)
 
     def recv_msg(self):
         if self.threaded:
-            raw = self.recv_sock.recv(NetworkEndpoint.MAX_MSG_SIZE)
-            msg = SimpleMessage.parse(raw)
-            if not msg.subject == "H":
-                print msg
-            self.event(msg)
+            self.recv()
         else:
             try:
                 while 1:
-                    raw = self.recv_sock.recv(NetworkEndpoint.MAX_MSG_SIZE)
-                    msg = SimpleMessage.parse(raw)
-                    self.event(msg)
+                    self.recv()
             except Exception, e:
                 err, message = e
                 if err != errno.EAGAIN:                                
-                    print('error handling message, errno ' + str(errno) + ': ' + message)
+                    Log.error('error handling message, errno ' + str(errno) + ': ' + message)
+
+    def recv(self):
+        # return self.socket.recv(NetworkEndpoint.MAX_MSG_SIZE)
+        size = self._msgLength()
+        data = self._read(size)
+        frmt = "!%ds" % size
+        msg = None
+        if data:
+            msg = struct.unpack(frmt,data)
+        if msg:
+            self.event(SimpleMessage.parse(msg[0]))
+
+    def _msgLength(self):
+        d = self._read(4)
+        s = struct.unpack('!I', d)
+        return s[0]
+
+    def _read(self, size):
+        data = ''
+        while len(data) < size:
+            # try:
+            #     dataTmp = self.socket.recv(size-len(data))
+            #     print(dataTmp)
+            #     data += dataTmp
+            #     if dataTmp == '':
+            #         raise RuntimeError("socket connection broken")
+            # except socket.error, e:
+            #     if e[0] == 35:
+            #         Log.warn(errno.errorcode[35])
+            #         Log.warn("Resource unavailable, trying again.")
+            #     else:
+            #         Log.error(e)
+            #     break
+            dataTmp = self.socket.recv(size-len(data))
+            data += dataTmp
+            if dataTmp == '':
+                raise RuntimeError("socket connection broken")
+        return data
+
+    def send_msg(self, msg, immediate=False, address=None):
+        if self.socket:
+            if immediate:
+                self.send(msg, address)
+            else:
+                self.outgoingMailbox.put(msg)
+                for callback in self.readyCallbacks:
+                    callback(self)
+
+    def send(self, msg, address=None):
+        msg = str(msg)
+        frmt = "!%ds" % len(msg)
+        packedMsg = struct.pack(frmt, msg)
+        packedHdr = struct.pack('!I', len(packedMsg))
+        self._send(packedHdr, address)
+        self._send(packedMsg, address)
+
+    def _send(self, msg, address=None):
+        sent = 0
+        while sent < len(msg):
+            if address is None:
+                sent += self.socket.send(msg[sent:])
+            else:
+                sent += self.socket.sendto(msg[sent:], address)
 
     def event(self, event):
-        print ("Received event!")
-        print ("Available callbacks:" + str(self.eventCallbacks))
         for callback in self.eventCallbacks:
-            print("Running callback " + str(callback))
             callback(event)
 
     @staticmethod
