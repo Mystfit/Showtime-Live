@@ -46,11 +46,14 @@ class LiveNetworkEndpoint():
         self.incomingActions[NetworkPrefixes.prefix_incoming(action)] = {"class":cls, "function":callback}
 
     def send_to_showtime(self, message, args, responding=False):
-        endpoint = self.udpEndpoint
+        ret = None
         if responding:
-            endpoint = self.tcpEndpoint
-        return endpoint.send_msg(SimpleMessage(
-            NetworkPrefixes.prefix_outgoing(message), args))
+            ret = self.tcpEndpoint.send_msg(SimpleMessage(
+                NetworkPrefixes.prefix_outgoing(message), args))
+        else:
+            ret = self.udpEndpoint.send_msg(SimpleMessage(
+                NetworkPrefixes.prefix_outgoing(message), args), True)
+        return ret
 
     def register_to_showtime(self, message, methodaccess, methodargs=None):
         return self.tcpEndpoint.send_msg(SimpleMessage(
@@ -66,9 +69,6 @@ class LiveNetworkEndpoint():
         while self.requestLock:
             self.requestLock = False
             try:
-                # self.udpEndpoint.recv_msg()
-
-                # Handle TCP
                 inputready,outputready,exceptready = select.select(
                     self.inputSockets.keys(),
                     self.outputSockets.keys(),
@@ -85,7 +85,9 @@ class LiveNetworkEndpoint():
                             msg = endpoint.outgoingMailbox.get_nowait()
                             endpoint.send(msg)
                     except Queue.Empty:
-                        del self.outputSockets[endpoint.socket]
+                        pass
+                        ## Remove output socket from select once it's done sending 
+                        # del self.outputSockets[endpoint.socket]
 
             except Exception, e:
                 print e

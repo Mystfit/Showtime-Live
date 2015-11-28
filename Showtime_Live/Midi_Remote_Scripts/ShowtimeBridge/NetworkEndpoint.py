@@ -58,7 +58,7 @@ class SimpleMessage:
         return SimpleMessage(jsonmsg[0], jsonmsg[1])
 
 class NetworkEndpoint():
-    MAX_MSG_SIZE = 65536
+    MAX_MSG_SIZE = 1024
 
     def __init__(self, localPort, remotePort, threaded=True):
         self.threaded = threaded
@@ -67,7 +67,6 @@ class NetworkEndpoint():
         self.eventCallbacks = set()
         self.readyCallbacks = set()
         self.outgoingMailbox = Queue.Queue()
-        self.socket = None
         self.peerConnected = False
         self.create_socket()
 
@@ -135,7 +134,7 @@ class NetworkEndpoint():
             #     else:
             #         Log.error(e)
             #     break
-            dataTmp = self.socket.recv(size-len(data))
+            dataTmp = self.socket.recv(min(size-len(data), NetworkEndpoint.MAX_MSG_SIZE))
             data += dataTmp
             if dataTmp == '':
                 raise RuntimeError("socket connection broken")

@@ -24,7 +24,7 @@ class HeartbeatThread(threading.Thread):
 
 
 class UDPEndpoint(NetworkEndpoint):
-    HEARTBEAT_DURATION = 5000
+    HEARTBEAT_DURATION = 2000
     HEARTBEAT_TIMEOUT = HEARTBEAT_DURATION * 2
 
     def __init__(self, localPort, remotePort, threaded=True):
@@ -62,6 +62,7 @@ class UDPEndpoint(NetworkEndpoint):
             self.lastPeerHeartbeat = NetworkEndpoint.current_milli_time()
             self.peerConnected = True
             return
+        Log.info("UDP Incoming")
         NetworkEndpoint.event(self, event)
 
     def send(self, msg, address=None):

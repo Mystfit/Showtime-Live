@@ -7,12 +7,13 @@ from Logger import Log
 
 
 class TCPEndpoint(NetworkEndpoint):
-    def __init__(self, localPort, remotePort, threaded=True, serverSocket=True):
+    def __init__(self, localPort, remotePort, threaded=True, serverSocket=True, socket=None):
         self.serverSocket = serverSocket
+        self.socket = socket
         NetworkEndpoint.__init__(self, localPort, remotePort, threaded)
 
     def create_socket(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = self.socket if self.socket else socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -24,6 +25,8 @@ class TCPEndpoint(NetworkEndpoint):
 
         if not self.threaded:
             self.socket.setblocking(0)
+        else:
+            self.socket.setblocking(True)
 
     def connect(self):
         try:

@@ -83,15 +83,9 @@ class LiveRouter(threading.Thread):
                 if s == self.tcpEndpoint.socket: 
                     client, address = self.tcpEndpoint.socket.accept() 
                     print("New client connecting...")
-                    print address
-                    endpoint = TCPEndpoint(-1, -1, True, False)
+                    endpoint = TCPEndpoint(-1, -1, True, False, client)
                     endpoint.add_event_callback(self.event)
                     endpoint.add_ready_callback(self.endpoint_ready)
-                    client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-                    client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-                    client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    client.setblocking(True)
-                    endpoint.socket = client
                     self.inputSockets[client] = endpoint
                 elif s == self.udpEndpoint.socket:
                     self.udpEndpoint.recv_msg()
@@ -103,18 +97,20 @@ class LiveRouter(threading.Thread):
                         print("Client socket closed")
                         endpoint.close()
                         del self.inputSockets[endpoint.socket]
-
             for s in outputready:
                 endpoint = self.outputSockets[s]
+                print("Output ready")
                 try:
                     while 1:
                         endpoint.send(endpoint.outgoingMailbox.get_nowait())
                 except Queue.Empty:
+                    pass
                     del self.outputSockets[endpoint.socket]
         self.join(1)
 
     def endpoint_ready(self, endpoint):
-        self.outputSockets[endpoint.socket] = endpoint
+        # self.outputSockets[endpoint.socket] = endpoint
+        pass
 
     def stop(self):
         self.exitFlag = 1
@@ -157,8 +153,7 @@ class LiveRouter(threading.Thread):
     def incoming(self, message):
         # print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
-        print(message)
         self.send_to_live(message.name, args)
 
     def send_to_live(self, message, args):
-        return self.udpEndpoint.send_msg(SimpleMessage(NetworkPrefixes.prefix_incoming(message), args))
+        return self.udpEndpoint.send_msg(SimpleMessage(NetworkPrefixes.prefix_incoming(message), args), True)
