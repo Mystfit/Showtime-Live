@@ -86,6 +86,7 @@ class LiveRouter(threading.Thread):
                     endpoint = TCPEndpoint(-1, -1, True, False, client)
                     endpoint.add_event_callback(self.event)
                     endpoint.add_ready_callback(self.endpoint_ready)
+                    endpoint.send_handshake()
                     self.inputSockets[client] = endpoint
                 elif s == self.udpEndpoint.socket:
                     self.udpEndpoint.recv_msg()

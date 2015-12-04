@@ -19,6 +19,7 @@ class NetworkPrefixes:
     REGISTRATION = "R"
     DELIMITER = "_"
     HEARTBEAT = "H"
+    HANDSHAKE = "HS"
 
     @staticmethod
     def prefix_outgoing(name):
@@ -66,6 +67,7 @@ class NetworkEndpoint():
         self.remoteAddr = (("127.0.0.1"), remotePort)
         self.eventCallbacks = set()
         self.readyCallbacks = set()
+        self.closingCallbacks = set()
         self.outgoingMailbox = Queue.Queue()
         self.peerConnected = False
         self.create_socket()
@@ -90,17 +92,24 @@ class NetworkEndpoint():
     def remove_ready_callback(self, callback):
         self.readyCallbacks.remove(callback)
 
+    def add_closing_callback(self, callback):
+        self.closingCallbacks.add(callback)
+
+    def remove_closing_callback(self, callback):
+        self.closingCallbacks.remove(callback)
+
     def recv_msg(self):
-        if self.threaded:
-            self.recv()
-        else:
-            try:
-                while 1:
-                    self.recv()
-            except Exception, e:
-                err, message = e
-                if err != errno.EAGAIN:                                
-                    Log.error('error handling message, errno ' + str(errno) + ': ' + message)
+        self.recv()
+        # if self.threaded:
+        #     self.recv()
+        # else:
+        #     try:
+        #         while 1:
+        #             self.recv()
+        #     except Exception, e:
+        #         Log.error(e)
+                # if err != errno.EAGAIN:                                
+                #     Log.error('error handling message, errno ' + str(errno) + ': ' + message)
 
     def recv(self):
         # return self.socket.recv(NetworkEndpoint.MAX_MSG_SIZE)
@@ -121,21 +130,18 @@ class NetworkEndpoint():
     def _read(self, size):
         data = ''
         while len(data) < size:
-            # try:
-            #     dataTmp = self.socket.recv(size-len(data))
-            #     print(dataTmp)
-            #     data += dataTmp
-            #     if dataTmp == '':
-            #         raise RuntimeError("socket connection broken")
-            # except socket.error, e:
-            #     if e[0] == 35:
-            #         Log.warn(errno.errorcode[35])
-            #         Log.warn("Resource unavailable, trying again.")
-            #     else:
-            #         Log.error(e)
-            #     break
-            dataTmp = self.socket.recv(min(size-len(data), NetworkEndpoint.MAX_MSG_SIZE))
-            data += dataTmp
+            retries = 10
+            while retries > 0:
+                try:
+                    dataTmp = self.socket.recv(min(size-len(data), NetworkEndpoint.MAX_MSG_SIZE))
+                    data += dataTmp
+                    retries = 0
+                except socket.error, e:
+                    if e[0] == 35:
+                        Log.warn("Socket busy. Trying again")
+                        retries -= 1
+                    else:
+                        Log.error(e)
             if dataTmp == '':
                 raise RuntimeError("socket connection broken")
         return data

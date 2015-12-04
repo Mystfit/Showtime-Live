@@ -24,7 +24,7 @@ class LiveDevice(LiveWrapper):
 
     @classmethod
     def register_methods(cls):
-        LiveWrapper.add_outgoing_method(LiveDevice.DEVICE_UPDATED)
+        cls.add_outgoing_method(LiveDevice.DEVICE_UPDATED)
 
     def to_object(self):
         params = {

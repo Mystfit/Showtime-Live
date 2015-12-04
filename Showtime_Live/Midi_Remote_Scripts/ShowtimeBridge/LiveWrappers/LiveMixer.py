@@ -32,7 +32,7 @@ class LiveMixer(LiveWrapper):
 
     @classmethod
     def register_methods(cls):
-        LiveWrapper.add_outgoing_method(LiveMixer.MIXER_SENDS_UPDATED)
+        cls.add_outgoing_method(LiveMixer.MIXER_SENDS_UPDATED)
         # LiveWrapper.add_incoming_method(
         #     LiveMixer.MIXER_VOLUME_SET,
         #     ["id", "value"],

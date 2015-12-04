@@ -39,12 +39,12 @@ class LiveClip(LiveWrapper):
 
     @classmethod
     def register_methods(cls):
-        LiveWrapper.add_outgoing_method(LiveClip.CLIP_STATUS)
-        LiveWrapper.add_outgoing_method(LiveClip.CLIP_NOTES_UPDATED)
-        LiveWrapper.add_outgoing_method(LiveClip.CLIP_PLAYING_POSITION)
-        LiveWrapper.add_incoming_method(LiveClip.CLIP_TRIGGER, ["id"], LiveClip.queue_clip_trigger)
-        LiveWrapper.add_incoming_method(LiveClip.CLIP_NOTES_SET, ["id"], LiveClip.queue_clip_notes_set)
-        LiveWrapper.add_incoming_method(LiveClip.CLIP_BROADCAST_PLAYING_POSITION, ["id"], LiveClip.queue_broadcast_playing_pos)
+        cls.add_outgoing_method(LiveClip.CLIP_STATUS)
+        cls.add_outgoing_method(LiveClip.CLIP_NOTES_UPDATED)
+        cls.add_outgoing_method(LiveClip.CLIP_PLAYING_POSITION)
+        cls.add_incoming_method(LiveClip.CLIP_TRIGGER, ["id"], LiveClip.queue_clip_trigger)
+        cls.add_incoming_method(LiveClip.CLIP_NOTES_SET, ["id"], LiveClip.queue_clip_notes_set)
+        cls.add_incoming_method(LiveClip.CLIP_BROADCAST_PLAYING_POSITION, ["id"], LiveClip.queue_broadcast_playing_pos)
 
 
     def to_object(self):

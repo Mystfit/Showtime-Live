@@ -27,8 +27,8 @@ class LiveSend(LiveWrapper):
 
     @classmethod
     def register_methods(cls):
-        LiveSend.add_outgoing_method(LiveSend.SEND_UPDATED)
-        LiveSend.add_incoming_method(
+        cls.add_outgoing_method(LiveSend.SEND_UPDATED)
+        cls.add_incoming_method(
             LiveSend.SEND_SET,
             ["id", "value"],
             LiveSend.send_set

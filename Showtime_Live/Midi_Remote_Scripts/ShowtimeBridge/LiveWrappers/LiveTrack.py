@@ -44,9 +44,9 @@ class LiveTrack(LiveWrapper):
         
     @classmethod
     def register_methods(cls):
-        LiveWrapper.add_outgoing_method(LiveTrack.TRACK_METER)
-        LiveWrapper.add_outgoing_method(LiveTrack.TRACK_MIXER_SENDS_UPDATED)
-        LiveWrapper.add_incoming_method(LiveTrack.TRACK_STOP, ["id"], LiveTrack.stop_track)
+        cls.add_outgoing_method(LiveTrack.TRACK_METER)
+        cls.add_outgoing_method(LiveTrack.TRACK_MIXER_SENDS_UPDATED)
+        cls.add_incoming_method(LiveTrack.TRACK_STOP, ["id"], LiveTrack.stop_track)
         # LiveWrapper.add_incoming_method(
         #     LiveTrack.TRACK_MIXER_VOLUME_SET,
         #     ["id", "value"],

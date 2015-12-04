@@ -28,8 +28,8 @@ class LiveDeviceParameter(LiveWrapper):
 
     @classmethod
     def register_methods(cls):
-        LiveDeviceParameter.add_outgoing_method(LiveDeviceParameter.PARAM_UPDATED)
-        LiveDeviceParameter.add_incoming_method(
+        cls.add_outgoing_method(LiveDeviceParameter.PARAM_UPDATED)
+        cls.add_incoming_method(
             LiveDeviceParameter.PARAM_SET, ["id", "value"],
             LiveDeviceParameter.queue_param_value)
 

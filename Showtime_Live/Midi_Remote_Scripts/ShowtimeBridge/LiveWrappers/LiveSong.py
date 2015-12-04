@@ -36,9 +36,9 @@ class LiveSong(LiveWrapper):
 
     @classmethod
     def register_methods(cls):
-        LiveSong.add_outgoing_method(LiveSong.SONG_METERS)
-        LiveSong.add_outgoing_method(LiveSong.SONG_TRACKS_UPDATED)
-        LiveSong.add_incoming_method(LiveSong.SONG_LAYOUT, None, LiveSong.build_song_layout, True)
+        cls.add_outgoing_method(LiveSong.SONG_METERS)
+        cls.add_outgoing_method(LiveSong.SONG_TRACKS_UPDATED)
+        cls.add_incoming_method(LiveSong.SONG_LAYOUT, None, LiveSong.build_song_layout, True)
 
     # --------
     # Outgoing

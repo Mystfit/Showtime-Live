@@ -222,7 +222,6 @@ class LiveWrapper(object):
         if methodname in cls._outgoing_methods:
             Log.warn("Outgoing method aready exists")
             # return
-
         cls._outgoing_methods[methodname] = LiveMethodDef(methodname, LiveWrapper.METHOD_READ)
 
     @classmethod
@@ -237,7 +236,7 @@ class LiveWrapper(object):
         if methodargs:
             for key in methodargs:
                 methodargkeys[key] = None
-
+        
         accessType = LiveWrapper.METHOD_RESPOND if isResponder else LiveWrapper.METHOD_WRITE
         cls._incoming_methods[methodname] = LiveMethodDef(methodname, accessType, methodargkeys, callback)
 
