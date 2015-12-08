@@ -53,7 +53,7 @@ class UDPEndpoint(NetworkEndpoint):
     def send_heartbeat(self):
         if(NetworkEndpoint.current_milli_time() > self.lastTransmittedHeartbeat + UDPEndpoint.HEARTBEAT_DURATION):
             self.send_msg(SimpleMessage(NetworkPrefixes.HEARTBEAT, None), True, self.remoteAddr)
-        print("Sending heartbeat")
+        # print("Sending heartbeat")
 
     def check_heartbeat(self):
         if(NetworkEndpoint.current_milli_time() > self.lastPeerHeartbeat + UDPEndpoint.HEARTBEAT_TIMEOUT):

@@ -19,7 +19,7 @@ class LiveNetworkEndpoint():
         self.udpEndpoint.add_ready_callback(self.endpoint_ready)
         # self.tcpEndpoint.add_ready_callback(self.endpoint_ready)
         self.udpEndpoint.add_closing_callback(self.heartbeat_lost)
-        self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
+        self.inputSockets = {self.udpEndpoint.socket: self.udpEndpoint}
         self.outputSockets = {}
 
     def close(self):
@@ -62,7 +62,7 @@ class LiveNetworkEndpoint():
     def register_to_showtime(self, message, methodaccess, methodargs=None):
         return self.tcpEndpoint.send_msg(SimpleMessage(
             NetworkPrefixes.prefix_registration(message),
-            {"args": methodargs, "methodaccess": methodaccess}))
+            {"args": methodargs, "methodaccess": methodaccess}), True)
 
     def heartbeat_lost(self):
         self.tcpEndpoint.hangup = False
@@ -87,6 +87,7 @@ class LiveNetworkEndpoint():
                     Log.error("Bad file descriptor!")
                     Log.debug(self.inputSockets.keys())
                     Log.debug(self.outputSockets.keys())
+            
             for s in inputready:
                 endpoint = self.inputSockets[s]
                 try:
@@ -99,6 +100,7 @@ class LiveNetworkEndpoint():
                     except KeyError:
                         Log.warn("Socket missing. In input hangup")
                     continue
+            
             for s in outputready:
                 try:
                     endpoint = self.outputSockets[s]
@@ -112,18 +114,20 @@ class LiveNetworkEndpoint():
                     pass
                     ## Remove output socket from select once it's done sending 
                     # del self.outputSockets[endpoint.socket]
-            
 
             requestCounter += 1
         self.requestLock = True
         if requestCounter > 10:
             Log.warn(str(requestCounter) + " loops to clear queue")
 
-        
     def ensure_server_available(self):
         udpActive = self.udpEndpoint.check_heartbeat()
         if udpActive and not self.tcpEndpoint.peerConnected and not self.tcpEndpoint.hangup:
             Log.warn("Heartbeat found! Reconnecting TCP to " + str(self.tcpEndpoint.remoteAddr))
+
+            # Add tcp socket to pollable socket dict
+            self.inputSockets[self.tcpEndpoint.socket] = self.tcpEndpoint
+
             if self.tcpEndpoint.connect():
                 Log.info("TCP connection established. Waiting for handshake")
             else:
@@ -132,6 +136,10 @@ class LiveNetworkEndpoint():
         if not udpActive and self.tcpEndpoint.peerConnected:
             Log.warn("Heartbeat lost")
             self.tcpEndpoint.close()
+            try:
+                del self.inputSockets[self.tcpEndpoint.socket]
+            except KeyError:
+                Log.warn("TCP already removed from pollable sockets")
 
     def event_received(self, event):
         self.requestLock = True     # Lock the request loop

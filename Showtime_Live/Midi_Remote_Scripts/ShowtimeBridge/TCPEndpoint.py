@@ -35,13 +35,16 @@ class TCPEndpoint(NetworkEndpoint):
             self.socket.setblocking(True)
 
     def connect(self):
+        self.create_socket()
         try:
             status = 0
             try:
-                status = self.socket.connect_ex(self.remoteAddr)
+                status = self.socket.connect(self.remoteAddr)
             except socket.error, e:
-                Log.error(e)
-                self.socket.close()
+                if e[0] == 56:
+                    Log.error("Already connected!")
+                    self.peerConnected = True
+                    return
 
             if status == errno.EISCONN:
                 Log.warn("Already connected!")
