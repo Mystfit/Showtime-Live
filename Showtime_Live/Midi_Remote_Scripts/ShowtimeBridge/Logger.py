@@ -6,6 +6,7 @@ class Log():
 
     _loggermethod = None
     _loggerlevel = 0
+    _networklogging = False
 
     @staticmethod
     def set_logger(logger):
@@ -14,6 +15,10 @@ class Log():
     @staticmethod
     def set_log_level(level):
         Log._loggerlevel = level
+    
+    @staticmethod
+    def set_log_network(status):
+        Log._networklogging = status
 
     @staticmethod
     def write(message):
@@ -41,3 +46,8 @@ class Log():
     def error(message):
         if Log._loggerlevel >= Log.LOG_ERRORS:
             Log.write("ERROR: " + str(message))
+
+    @staticmethod
+    def network(message):
+        if Log._networklogging:
+            Log.write("NET: " + str(message))

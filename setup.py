@@ -32,7 +32,7 @@ def install_midi_remote_scripts():
             print("No Ableton Live installations detected.")
 
 setup(name='Showtime-Live',
-      version='1.3',
+      version='1.5',
       description='Showtime Bridge for Ableton Live.',
       long_description=read('README.md'),
       author='Byron Mallett',

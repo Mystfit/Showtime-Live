@@ -4,9 +4,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
-from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes
+from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkEndpoint
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint
 from ShowtimeBridge.TCPEndpoint import TCPEndpoint
+from ShowtimeBridge.Logger import Log
 
 import MidiRouter
 from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
@@ -39,6 +40,8 @@ class LiveRouter(threading.Thread):
     def __init__(self, stageaddress, midiportindex):
         threading.Thread.__init__(self)
         self.name = "LiveRouter"
+        Log.set_log_network(True)
+
         self.exitFlag = 0
         self.daemon = True
 
@@ -74,44 +77,56 @@ class LiveRouter(threading.Thread):
         self.udpEndpoint.add_ready_callback(self.endpoint_ready)
         self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
         self.outputSockets = {}
+        self.clients = set()
 
     def run(self):
         while not self.exitFlag:
-            inputready, outputready, exceptready = select.select(self.inputSockets.keys(), self.outputSockets.keys(),[])
+            inputready, outputready, exceptready = select.select(self.inputSockets.keys(), self.outputSockets.keys(),[], 1)
 
             for s in inputready: 
                 if s == self.tcpEndpoint.socket: 
                     client, address = self.tcpEndpoint.socket.accept() 
-                    print("New client connecting...")
+                    Log.network("New client connecting. Socket is %s" % client)
                     endpoint = TCPEndpoint(-1, -1, True, False, client)
                     endpoint.add_event_callback(self.event)
-                    endpoint.add_ready_callback(self.endpoint_ready)
-                    endpoint.send_handshake()
+                    endpoint.add_client_handshake_callback(self.incoming_client_handshake)
+                    endpoint.connectionStatus = NetworkEndpoint.PIPE_CONNECTED
+                    # endpoint.add_ready_callback(self.endpoint_ready)
                     self.inputSockets[client] = endpoint
+                    self.outputSockets[client] = endpoint
+                    self.clients.add(endpoint)
                 elif s == self.udpEndpoint.socket:
-                    self.udpEndpoint.recv_msg()
+                    try:
+                        self.udpEndpoint.recv_msg()
+                    except RuntimeError:
+                        Log.network("select() reports UDP endpoint has data but peer connection was reset")
                 else: 
                     endpoint = self.inputSockets[s]
                     try:
                         endpoint.recv_msg()
                     except RuntimeError:
-                        print("Client socket closed")
+                        Log.network("Client socket closed")
                         endpoint.close()
                         del self.inputSockets[endpoint.socket]
+            
             for s in outputready:
                 endpoint = self.outputSockets[s]
-                print("Output ready")
                 try:
                     while 1:
-                        endpoint.send(endpoint.outgoingMailbox.get_nowait())
+                        msg = endpoint.outgoingMailbox.get_nowait()
+                        endpoint.send(msg)
                 except Queue.Empty:
-                    pass
                     del self.outputSockets[endpoint.socket]
         self.join(1)
 
     def endpoint_ready(self, endpoint):
+        Log.network("Marking output socket as having queued messages")
         # self.outputSockets[endpoint.socket] = endpoint
-        pass
+
+    def incoming_client_handshake(self):
+        Log.network("Client sent handshake")
+        for endpoint in self.clients:
+            endpoint.send_handshake_ack()
 
     def stop(self):
         self.exitFlag = 1

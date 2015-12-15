@@ -1,6 +1,5 @@
 import socket
 import threading
-import errno
 import time
 import Queue
 import struct
@@ -12,14 +11,30 @@ except ImportError:
 from Logger import Log
 
 
+class NetworkErrors:
+    import platform
+    import errno
+    if platform.system() == "Windows":
+        EAGAIN = errno.WSAEWOULDBLOCK
+        ECONNRESET = errno.WSAECONNRESET
+        EISCONN = errno.WSAEISCONN
+        EBADF = errno.EBADF
+    else:
+        EAGAIN = errno.EAGAIN
+        ECONNRESET = errno.ECONNRESET
+        EISCONN = errno.EISCONN
+        EBADF = errno.EBADF
+
+
 class NetworkPrefixes:
     INCOMING = "I"
     OUTGOING = "O"
     RESPONDER = "L"
     REGISTRATION = "R"
     DELIMITER = "_"
-    HEARTBEAT = "H"
+    HEARTBEAT = "HB"
     HANDSHAKE = "HS"
+    HANDSHAKE_ACK = "HSACK"
 
     @staticmethod
     def prefix_outgoing(name):
@@ -58,8 +73,15 @@ class SimpleMessage:
         jsonmsg = json.loads(rawMsg)
         return SimpleMessage(jsonmsg[0], jsonmsg[1])
 
+
 class NetworkEndpoint():
     MAX_MSG_SIZE = 1024
+
+    # Connection statuses
+    PIPE_DISCONNECTED = 0
+    PIPE_CONNECTED = 1
+    HANDSHAKING = 2
+    HANDSHAKE_COMPLETE = 3
 
     def __init__(self, localPort, remotePort, threaded=True):
         self.threaded = threaded
@@ -69,8 +91,9 @@ class NetworkEndpoint():
         self.readyCallbacks = set()
         self.closingCallbacks = set()
         self.outgoingMailbox = Queue.Queue()
-        self.peerConnected = False
-        self.create_socket()
+        self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
+        if not hasattr(self, "socket"):
+            self.create_socket()
 
     def create_socket(self):
         raise NotImplementedError
@@ -78,41 +101,18 @@ class NetworkEndpoint():
     def close(self):
         if self.socket:
             self.socket.close()
-        self.peerConnected = False
+            self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
 
-    def add_event_callback(self, callback):
-        self.eventCallbacks.add(callback)
+    @staticmethod
+    def current_milli_time():
+        return int(round(time.time() * 1000))
 
-    def remove_event_callback(self, callback):
-        self.eventCallbacks.remove(callback)
-
-    def add_ready_callback(self, callback):
-        self.readyCallbacks.add(callback)
-
-    def remove_ready_callback(self, callback):
-        self.readyCallbacks.remove(callback)
-
-    def add_closing_callback(self, callback):
-        self.closingCallbacks.add(callback)
-
-    def remove_closing_callback(self, callback):
-        self.closingCallbacks.remove(callback)
-
+    # Send/Receive
+    # ------------
     def recv_msg(self):
         self.recv()
-        # if self.threaded:
-        #     self.recv()
-        # else:
-        #     try:
-        #         while 1:
-        #             self.recv()
-        #     except Exception, e:
-        #         Log.error(e)
-                # if err != errno.EAGAIN:                                
-                #     Log.error('error handling message, errno ' + str(errno) + ': ' + message)
 
     def recv(self):
-        # return self.socket.recv(NetworkEndpoint.MAX_MSG_SIZE)
         size = self._msgLength()
         data = self._read(size)
         frmt = "!%ds" % size
@@ -136,14 +136,14 @@ class NetworkEndpoint():
                     dataTmp = self.socket.recv(min(size-len(data), NetworkEndpoint.MAX_MSG_SIZE))
                     data += dataTmp
                     retries = 0
+                    if dataTmp == '':
+                        raise RuntimeError("socket connection broken")
                 except socket.error, e:
-                    if e[0] == 35:
+                    if e[0] == NetworkErrors.EAGAIN:
                         Log.warn("Socket busy. Trying again")
                         retries -= 1
                     else:
-                        Log.error(e)
-            if dataTmp == '':
-                raise RuntimeError("socket connection broken")
+                        raise RuntimeError("socket connection broken")
         return data
 
     def send_msg(self, msg, immediate=False, address=None):
@@ -175,6 +175,22 @@ class NetworkEndpoint():
         for callback in self.eventCallbacks:
             callback(event)
 
-    @staticmethod
-    def current_milli_time():
-        return int(round(time.time() * 1000))
+    # Callback management
+    # -------------------
+    def add_event_callback(self, callback):
+        self.eventCallbacks.add(callback)
+
+    def remove_event_callback(self, callback):
+        self.eventCallbacks.remove(callback)
+
+    def add_ready_callback(self, callback):
+        self.readyCallbacks.add(callback)
+
+    def remove_ready_callback(self, callback):
+        self.readyCallbacks.remove(callback)
+
+    def add_closing_callback(self, callback):
+        self.closingCallbacks.add(callback)
+
+    def remove_closing_callback(self, callback):
+        self.closingCallbacks.remove(callback)

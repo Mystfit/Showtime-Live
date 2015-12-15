@@ -34,28 +34,14 @@ class ShowtimeBridge(ControlSurface):
             self._suppress_send_midi = True
 
             Log.set_logger(self.log_message)
-            Log.set_log_level(Log.LOG_INFO)
+            Log.set_log_level(Log.LOG_WARN)
+            Log.set_log_network(True)
             Log.write("-----------------------")
             Log.write("ShowtimeBridge starting")
             Log.write("Python version " + sys.version)
             Log.info(sys.version)
 
             self.initServer()
-
-            # # Register methods to the showtimebridge server
-            # wrapperClasses = LiveWrapper.__subclasses__()
-            # wrapperClasses.append(LiveWrapper)
-            # for cls in wrapperClasses:  
-            #     cls.clear_instances()
-            #     cls.register_methods()
-            #     for action in cls.incoming_methods().values():
-            #         Log.info("Adding %s to incoming callbacks" % action.methodName)
-            #         self.endpoint.add_incoming_action(action.methodName, cls, action.callback)
-            #         self.endpoint.register_to_showtime(action.methodName, action.methodAccess, action.methodArgs)
-
-            #     for action in cls.outgoing_methods().values():
-            #         Log.info("Adding %s to outgoing methods" % action.methodName)
-            #         self.endpoint.register_to_showtime(action.methodName, action.methodAccess)
 
             # Midi clock to trigger incoming message check
             self.clock = LoopingEncoderElement(0, 119)

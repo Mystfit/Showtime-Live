@@ -2,6 +2,7 @@
 import sys, time
 from optparse import OptionParser
 from Showtime_Live.LiveRouter import LiveRouter
+from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Logger import Log
 
 # Options parser
 parser = OptionParser()
@@ -18,6 +19,12 @@ if options.listmidiports:
     midiRouter.listMidiPorts()
     sys.exit(0)
 
+if options.verbose:
+	Log.set_log_level(Log.LOG_INFO)
+else:
+	Log.set_log_level(Log.LOG_WARN)
+Log.set_log_network(True)
+
 # Set up message router
 stageaddress = options.stageaddress
 if stageaddress:
@@ -28,7 +35,6 @@ showtimeRouter.start()
 print "Server up!"
 
 # Enter into the idle loop to handle messages
-
 try:
     while 1:
         time.sleep(1)

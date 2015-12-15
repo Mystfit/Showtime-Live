@@ -34,7 +34,7 @@ class UDPEndpoint(NetworkEndpoint):
 
     def create_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.settimeout(5)
         self.socket.bind(self.localAddr)
 
@@ -53,21 +53,19 @@ class UDPEndpoint(NetworkEndpoint):
     def send_heartbeat(self):
         if(NetworkEndpoint.current_milli_time() > self.lastTransmittedHeartbeat + UDPEndpoint.HEARTBEAT_DURATION):
             self.send_msg(SimpleMessage(NetworkPrefixes.HEARTBEAT, None), True, self.remoteAddr)
-        # print("Sending heartbeat")
 
     def check_heartbeat(self):
         if(NetworkEndpoint.current_milli_time() > self.lastPeerHeartbeat + UDPEndpoint.HEARTBEAT_TIMEOUT):
-            self.peerConnected = False
+            self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
             for callback in self.closingCallbacks:
                 callback()
-        return self.peerConnected
+        return (self.connectionStatus == NetworkEndpoint.PIPE_CONNECTED)
 
     def event(self, event):
         if event.subject == NetworkPrefixes.HEARTBEAT:
             self.lastPeerHeartbeat = NetworkEndpoint.current_milli_time()
-            self.peerConnected = True
+            self.connectionStatus = NetworkEndpoint.PIPE_CONNECTED
             return
-        Log.info("UDP Incoming")
         NetworkEndpoint.event(self, event)
 
     def send(self, msg, address=None):
