@@ -45,11 +45,11 @@ class TCPEndpoint(NetworkEndpoint):
                 status = self.socket.connect(self.remoteAddr)
             except socket.error, e:
                 if e[0] == NetworkErrors.EISCONN:
-                    Log.warn("Already connected!")
+                    Log.network("...TCP connected!")
                     self.connectionStatus = NetworkEndpoint.PIPE_CONNECTED
                     break
                 elif e[0] == NetworkErrors.EAGAIN:
-                    Log.error("Socket not ready")
+                    Log.network("TCP connecting...")
                     retries -= 1
                 else:
                     Log.error("Connection failed!")
@@ -93,7 +93,7 @@ class TCPEndpoint(NetworkEndpoint):
 
     def send_handshake_ack(self):
         Log.network("Sending TCP handshake ACK on %s" % self.socket)
-        self.send_msg(SimpleMessage(NetworkPrefixes.HANDSHAKE_ACK, None), True)
+        self.send_msg(SimpleMessage(NetworkPrefixes.HANDSHAKE_ACK, None))
 
     # Callback management
     # -------------------

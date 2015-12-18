@@ -137,13 +137,15 @@ class NetworkEndpoint():
                     data += dataTmp
                     retries = 0
                     if dataTmp == '':
-                        raise RuntimeError("socket connection broken")
+                        raise RuntimeError("Socket returned empty string. Connection broken")
                 except socket.error, e:
                     if e[0] == NetworkErrors.EAGAIN:
                         Log.warn("Socket busy. Trying again")
                         retries -= 1
+                    elif e[0] == NetworkErrors.ECONNRESET:
+                        raise ReadError("Connection reset when reading or destination port closed.")
                     else:
-                        raise RuntimeError("socket connection broken")
+                        raise RuntimeError("Socket connection broken. %s" % e)
         return data
 
     def send_msg(self, msg, immediate=False, address=None):
@@ -194,3 +196,13 @@ class NetworkEndpoint():
 
     def remove_closing_callback(self, callback):
         self.closingCallbacks.remove(callback)
+
+
+# Exceptions
+# ----------
+class ReadError(Exception):
+    """Exception for read errors on the endpoint"""
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)

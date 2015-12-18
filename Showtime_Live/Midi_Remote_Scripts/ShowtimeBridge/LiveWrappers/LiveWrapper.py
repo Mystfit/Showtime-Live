@@ -219,17 +219,11 @@ class LiveWrapper(object):
     @classmethod
     def add_outgoing_method(cls, methodname):
         """Registers a method for this wrapper that will publish to the network"""
-        if methodname in cls._outgoing_methods:
-            Log.warn("Outgoing method aready exists")
-            # return
         cls._outgoing_methods[methodname] = LiveMethodDef(methodname, LiveWrapper.METHOD_READ)
 
     @classmethod
     def add_incoming_method(cls, methodname, methodargs, callback, isResponder=False):
         """Registers method for this wrapper that will receive events from the network"""
-        if methodname in cls._incoming_methods:
-            Log.warn("Incoming method aready exists")
-
         # !!!STOPGAP!!!
         # Convert method arg arrays to key/value pairs. Needs to be fixed in Showtime instead of here!
         methodargkeys = {}
@@ -376,8 +370,7 @@ class LiveWrapper(object):
             "name": name,
             "parent": self.parent().id() if self.parent() else None,
             "index": self.handleindex
-        })
-        
+        })      
         return params
 
     @staticmethod

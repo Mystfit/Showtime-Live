@@ -27,9 +27,11 @@ class UDPEndpoint(NetworkEndpoint):
     HEARTBEAT_DURATION = 2000
     HEARTBEAT_TIMEOUT = HEARTBEAT_DURATION * 2
 
-    def __init__(self, localPort, remotePort, threaded=True):
-        self.lastPeerHeartbeat = 0
-        self.lastTransmittedHeartbeat = 0
+    def __init__(self, localPort, remotePort, threaded=True, heartbeatID=None):
+        self.lastPeerHeartbeatTime = 0
+        self.lastTransmittedHeartbeatTime = 0
+        self.heartbeatID = heartbeatID
+        self.lastReceivedHeartbeatID = None
         NetworkEndpoint.__init__(self, localPort, remotePort, threaded)
 
     def create_socket(self):
@@ -51,19 +53,31 @@ class UDPEndpoint(NetworkEndpoint):
         NetworkEndpoint.close(self)
 
     def send_heartbeat(self):
-        if(NetworkEndpoint.current_milli_time() > self.lastTransmittedHeartbeat + UDPEndpoint.HEARTBEAT_DURATION):
-            self.send_msg(SimpleMessage(NetworkPrefixes.HEARTBEAT, None), True, self.remoteAddr)
+        if(NetworkEndpoint.current_milli_time() > self.lastTransmittedHeartbeatTime + UDPEndpoint.HEARTBEAT_DURATION):
+            self.send_msg(SimpleMessage(NetworkPrefixes.HEARTBEAT, self.heartbeatID), True, self.remoteAddr)
 
     def check_heartbeat(self):
-        if(NetworkEndpoint.current_milli_time() > self.lastPeerHeartbeat + UDPEndpoint.HEARTBEAT_TIMEOUT):
+        if NetworkEndpoint.current_milli_time() > self.lastPeerHeartbeatTime + UDPEndpoint.HEARTBEAT_TIMEOUT:
             self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
+            Log.info("Heartbeat timeout")
+
+        # Verify we're still talking to the same server
+        if self.heartbeatID and self.lastReceivedHeartbeatID != self.heartbeatID:
+            self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
+            Log.network("Last heartbeat ID: %s. New heartbeat ID: %s" % (self.lastReceivedHeartbeatID, self.heartbeatID))
+
+        self.heartbeatID = self.lastReceivedHeartbeatID
+        
+        if self.connectionStatus == NetworkEndpoint.PIPE_DISCONNECTED:
             for callback in self.closingCallbacks:
                 callback()
+
         return (self.connectionStatus == NetworkEndpoint.PIPE_CONNECTED)
 
     def event(self, event):
         if event.subject == NetworkPrefixes.HEARTBEAT:
-            self.lastPeerHeartbeat = NetworkEndpoint.current_milli_time()
+            self.lastPeerHeartbeatTime = NetworkEndpoint.current_milli_time()
+            self.lastReceivedHeartbeatID = event.msg
             self.connectionStatus = NetworkEndpoint.PIPE_CONNECTED
             return
         NetworkEndpoint.event(self, event)

@@ -1,6 +1,6 @@
 import sys, os, select, Queue, socket
 from Logger import Log
-from NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkErrors, NetworkEndpoint
+from NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkErrors, NetworkEndpoint, ReadError
 from UDPEndpoint import UDPEndpoint
 from TCPEndpoint import TCPEndpoint
 from LiveWrappers.LiveWrapper import LiveWrapper
@@ -46,11 +46,11 @@ class LiveNetworkEndpoint():
         ret = None
         if responding:
             if self.tcpEndpoint.connectionStatus == NetworkEndpoint.HANDSHAKE_COMPLETE:
-                ret = self.tcpEndpoint.send_msg(SimpleMessage(
-                    NetworkPrefixes.prefix_outgoing(message), args))
+                msg = str(SimpleMessage(NetworkPrefixes.prefix_outgoing(message), args))
+                ret = self.tcpEndpoint.send_msg(msg)
         else:
-            ret = self.udpEndpoint.send_msg(SimpleMessage(
-                NetworkPrefixes.prefix_outgoing(message), args), True)
+            msg = SimpleMessage(NetworkPrefixes.prefix_outgoing(message), args)
+            ret = self.udpEndpoint.send_msg(msg, True)
         return ret
 
     def register_to_showtime(self, message, methodaccess, methodargs=None):
@@ -80,28 +80,29 @@ class LiveNetworkEndpoint():
                     Log.error("Bad file descriptor! Probably a dead socket passed to select")
                     Log.debug(self.inputSockets.keys())
                     Log.debug(self.outputSockets.keys())
+
+            if badSockets:
+                Log.error("Bad sockets: %s" % badSockets)
             
             if inputready: 
                 for s in inputready:
                     endpoint = self.inputSockets[s]
                     try:
                         endpoint.recv_msg()
-                    except RuntimeError:
+                    except (ReadError, RuntimeError), e:
+                        Log.error("Socket receive error! Closing %s. Reason: %s" % (endpoint, e))
+                        endpoint.close()
                         try:
-                            Log.error("Socket receive error! Closing %s" % endpoint)
-                            endpoint.close()
                             del self.inputSockets[endpoint.socket]
-                            del self.outputSockets[self.tcpEndpoint.socket]
+                            del self.outputSockets[endpoint.socket]
+                            outputready.remove(endpoint.socket)
                         except KeyError:
                             Log.network("Socket missing. In input hangup")
                         continue
             
             if outputready:
                 for s in outputready:
-                    try:
-                        endpoint = self.outputSockets[s]
-                    except KeyError:
-                        Log.network("Socket missing. In output hangup")
+                    endpoint = self.outputSockets[s]
                     try:
                         while 1:
                             msg = endpoint.outgoingMailbox.get_nowait()
@@ -118,7 +119,7 @@ class LiveNetworkEndpoint():
 
     def ensure_server_available(self):
         udpActive = self.udpEndpoint.check_heartbeat()
-        if udpActive and self.tcpEndpoint.connectionStatus == NetworkEndpoint.PIPE_DISCONNECTED and not self.tcpEndpoint.hangup:
+        if udpActive and self.tcpEndpoint.connectionStatus is NetworkEndpoint.PIPE_DISCONNECTED and not self.tcpEndpoint.hangup:
             Log.network("Heartbeat found! Reconnecting TCP to " + str(self.tcpEndpoint.remoteAddr))
 
             if self.tcpEndpoint.connect():
@@ -133,6 +134,7 @@ class LiveNetworkEndpoint():
             self.tcpEndpoint.close()
             try:
                 del self.inputSockets[self.tcpEndpoint.socket]
+                del self.outputSockets[self.tcpEndpoint.socket]
             except KeyError:
                 Log.error("TCP already removed from pollable sockets")
 

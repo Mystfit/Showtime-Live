@@ -1,10 +1,10 @@
-import sys, threading, os, Queue, time, select, socket
+import sys, threading, os, Queue, time, select, socket, uuid
 sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
 
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
 from Showtime.zst_method import ZstMethod
-from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkEndpoint
+from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkEndpoint, NetworkErrors, ReadError
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint
 from ShowtimeBridge.TCPEndpoint import TCPEndpoint
 from ShowtimeBridge.Logger import Log
@@ -44,6 +44,7 @@ class LiveRouter(threading.Thread):
 
         self.exitFlag = 0
         self.daemon = True
+        self.serverID = str(uuid.uuid4())[:8]
 
         self.midiRouter = MidiRouter.MidiRouter(midiportindex)
         if not self.midiRouter.midiActive():
@@ -70,7 +71,7 @@ class LiveRouter(threading.Thread):
 
         # Create sockets
         self.tcpEndpoint = TCPEndpoint(6003, 6004, True, True)
-        self.udpEndpoint = UDPEndpoint(6001, 6002, True)
+        self.udpEndpoint = UDPEndpoint(6001, 6002, True, self.serverID)
         self.tcpEndpoint.add_event_callback(self.event)
         self.udpEndpoint.add_event_callback(self.event)
         self.tcpEndpoint.add_ready_callback(self.endpoint_ready)
@@ -81,7 +82,13 @@ class LiveRouter(threading.Thread):
 
     def run(self):
         while not self.exitFlag:
-            inputready, outputready, exceptready = select.select(self.inputSockets.keys(), self.outputSockets.keys(),[], 1)
+            try:
+                inputready, outputready, exceptready = select.select(self.inputSockets.keys(), self.outputSockets.keys(),[], 1)
+            except socket.error, e:
+                if e[0] == NetworkErrors.EBADF:
+                    Log.error("Bad file descriptor! Probably a dead socket passed to select")
+                    Log.debug(self.inputSockets.keys())
+                    Log.debug(self.outputSockets.keys())
 
             for s in inputready: 
                 if s == self.tcpEndpoint.socket: 
@@ -98,17 +105,26 @@ class LiveRouter(threading.Thread):
                 elif s == self.udpEndpoint.socket:
                     try:
                         self.udpEndpoint.recv_msg()
-                    except RuntimeError:
-                        Log.network("select() reports UDP endpoint has data but peer connection was reset")
+                    except ReadError, e:
+                        pass
+                        # Log.network("Read failed. UDP probably closed. %s" % e)
+                    except RuntimeError, e:
+                        Log.network("Receive failed. Reason: %s" % e)
                 else: 
                     endpoint = self.inputSockets[s]
                     try:
                         endpoint.recv_msg()
-                    except RuntimeError:
+                    except (ReadError, RuntimeError), e:
                         Log.network("Client socket closed")
                         endpoint.close()
-                        del self.inputSockets[endpoint.socket]
-            
+                        try:
+                            del self.inputSockets[endpoint.socket]
+                            del self.outputSockets[endpoint.socket]
+                            self.clients.remove(endpoint)
+                            outputready.remove(endpoint.socket)
+                        except KeyError, e:
+                            Log.network("Socket missing. In hangup")
+        
             for s in outputready:
                 endpoint = self.outputSockets[s]
                 try:
@@ -116,12 +132,13 @@ class LiveRouter(threading.Thread):
                         msg = endpoint.outgoingMailbox.get_nowait()
                         endpoint.send(msg)
                 except Queue.Empty:
-                    del self.outputSockets[endpoint.socket]
+                    pass
+                    # del self.outputSockets[endpoint.socket]
         self.join(1)
 
     def endpoint_ready(self, endpoint):
         Log.network("Marking output socket as having queued messages")
-        # self.outputSockets[endpoint.socket] = endpoint
+        self.outputSockets[endpoint.socket] = endpoint
 
     def incoming_client_handshake(self):
         Log.network("Client sent handshake")
@@ -160,14 +177,14 @@ class LiveRouter(threading.Thread):
         if msgType == NetworkPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
         elif msgType == NetworkPrefixes.OUTGOING or msgType == NetworkPrefixes.RESPONDER:
-            # print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
+            print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)
             else:
                 print "Outgoing method not registered!"
 
     def incoming(self, message):
-        # print "ST-->Live: " + str(message.name)
+        print "ST-->Live: " + str(message.name)
         args = message.args if message.args else {}
         self.send_to_live(message.name, args)
 
