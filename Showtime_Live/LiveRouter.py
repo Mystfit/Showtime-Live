@@ -177,14 +177,14 @@ class LiveRouter(threading.Thread):
         if msgType == NetworkPrefixes.REGISTRATION:
             self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
         elif msgType == NetworkPrefixes.OUTGOING or msgType == NetworkPrefixes.RESPONDER:
-            print "Live-->ST: " + str(event.subject) + '=' + str(event.msg)
+            Log.info("Live-->ST: " + str(event.subject) + '=' + str(event.msg))
             if methodName in self.node.methods:
                 self.node.update_local_method_by_name(methodName, event.msg)
             else:
                 print "Outgoing method not registered!"
 
     def incoming(self, message):
-        print "ST-->Live: " + str(message.name)
+        Log.info("ST-->Live: " + str(message.name))
         args = message.args if message.args else {}
         self.send_to_live(message.name, args)
 

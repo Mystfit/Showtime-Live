@@ -14,6 +14,7 @@ class Clock(threading.Thread):
         self.exitFlag = 0
         self.setDaemon(True)
         self.clockVal = 0
+        self.rate = 0.001
         self.midi_out = midiPort
 
     def stop(self):
@@ -24,7 +25,7 @@ class Clock(threading.Thread):
             self.clockVal += 1
             self.clockVal = self.clockVal % 127
             self.midi_out.send_message([0xB0, 119, self.clockVal])
-            time.sleep(0.001)
+            time.sleep(self.rate)
 
 
 class MidiRouter:
@@ -42,6 +43,9 @@ class MidiRouter:
         # Set up midi clock
         self.clock = Clock(self.midi_out)
         self.clock.start()
+
+        print("Starting MIDI clock")
+        print("Midi clock ticking every %ss" % self.clock.rate)
 
         # Note tracking
         self.activeNotes = {}
