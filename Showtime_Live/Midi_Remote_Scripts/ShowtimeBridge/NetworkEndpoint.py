@@ -92,6 +92,8 @@ class NetworkEndpoint():
         self.closingCallbacks = set()
         self.outgoingMailbox = Queue.Queue()
         self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
+        self.enteringImmediate = False
+        self.immediate = False
         if not hasattr(self, "socket"):
             self.create_socket()
 
@@ -150,7 +152,7 @@ class NetworkEndpoint():
 
     def send_msg(self, msg, immediate=False, address=None):
         if self.socket:
-            if immediate:
+            if immediate or self.immediate:
                 self.send(msg, address)
             else:
                 self.outgoingMailbox.put(msg)

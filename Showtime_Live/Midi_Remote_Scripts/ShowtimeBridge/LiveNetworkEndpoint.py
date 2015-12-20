@@ -95,7 +95,10 @@ class LiveNetworkEndpoint():
                         try:
                             del self.inputSockets[endpoint.socket]
                             del self.outputSockets[endpoint.socket]
-                            outputready.remove(endpoint.socket)
+                            try:
+                                outputready.remove(endpoint.socket)
+                            except ValueError:
+                                pass
                         except KeyError:
                             Log.network("Socket missing. In input hangup")
                         continue

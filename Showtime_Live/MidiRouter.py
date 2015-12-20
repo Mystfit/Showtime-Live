@@ -16,15 +16,18 @@ class Clock(threading.Thread):
         self.clockVal = 0
         self.rate = 0.001
         self.midi_out = midiPort
+        self.midi_active = False
 
     def stop(self):
+        self.midi_active = False
         self.exitFlag = 1
 
     def run(self):
         while not self.exitFlag and self.midi_out:
             self.clockVal += 1
             self.clockVal = self.clockVal % 127
-            self.midi_out.send_message([0xB0, 119, self.clockVal])
+            if self.midi_active:
+                self.midi_out.send_message([0xB0, 119, self.clockVal])
             time.sleep(self.rate)
 
 
@@ -35,6 +38,8 @@ class MidiRouter:
 
     def __init__(self, midiportindex):
         # Setup midi port 
+        self.midiportindex = midiportindex
+        self.midi_active = False
         self.midi_out = self.createMidi(midiportindex)
 
         if not self.midi_out:
@@ -43,19 +48,21 @@ class MidiRouter:
         # Set up midi clock
         self.clock = Clock(self.midi_out)
         self.clock.start()
-
-        print("Starting MIDI clock")
-        print("Midi clock ticking every %ss" % self.clock.rate)
+        self.clock.midi_active = self.midi_active
 
         # Note tracking
         self.activeNotes = {}
         self.lastNote = None
         self.isMonophonic = True
 
+    def set_midi_active(self, state):
+        self.midi_active = state
+        if hasattr(self, "clock"):
+            print "Clock found!"
+            self.clock.midi_active = state
+
     def midiActive(self):
-        if self.midi_out:
-            return True
-        return False
+        return self.midi_active
 
     def createMidi(self, midiportindex):
         # Midi startup. Try creating a virtual port. Doesn't work on Windows
@@ -63,14 +70,15 @@ class MidiRouter:
 
         if midiportindex:
             if platform.system() == "Windows":
-            	if len(midi_out.ports) > 1:
-                	print "\nCan't open virtual midi port on windows. Using midi loopback instead."
-                	midi_out.open_port(midiportindex)
+                if len(midi_out.ports) > 1:
+                    print "Can't open virtual midi port on windows. Using midi loopback instead."
+                    midi_out.open_port(midiportindex)
+                    self.set_midi_active(True)
                 else:
-                	return None
+                    return None
             else:
                 midi_out.open_virtual_port("LiveShowtime_Midi")
-
+                self.set_midi_active(True)
         return midi_out
 
     def listMidiPorts(self):
@@ -78,9 +86,9 @@ class MidiRouter:
         for portindex, port in enumerate(self.midi_out.ports):
             print str(portindex) + ": " + str(port)
 
-
     def close(self):
         self.clock.stop()
+        self.midi_out.close_port()
 
     def play_midi_note(self, message):
         trigger = MidiRouter.NOTE_ON
@@ -101,3 +109,7 @@ class MidiRouter:
 
         self.lastNote = note
         self.midi_out.send_message([trigger, int(message.args["note"]), velocity])
+
+if __name__ == "__main__":
+    m = MidiRouter(1)
+    # m.close()

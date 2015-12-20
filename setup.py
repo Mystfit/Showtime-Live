@@ -31,7 +31,7 @@ def read(fname):
 #             print("No Ableton Live installations detected.")
 
 setup(name='Showtime-Live',
-      version='1.5',
+      version='1.5.1',
       description='Showtime Bridge for Ableton Live.',
       long_description=read('README.md'),
       author='Byron Mallett',

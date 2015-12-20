@@ -8,8 +8,6 @@ from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes, Netwo
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint
 from ShowtimeBridge.TCPEndpoint import TCPEndpoint
 from ShowtimeBridge.Logger import Log
-
-import MidiRouter
 from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
 
 
@@ -37,7 +35,7 @@ class RegistrationThread(threading.Thread):
 
 
 class LiveRouter(threading.Thread):
-    def __init__(self, stageaddress, midiportindex):
+    def __init__(self, stageaddress):
         threading.Thread.__init__(self)
         self.name = "LiveRouter"
         Log.set_log_network(True)
@@ -45,11 +43,6 @@ class LiveRouter(threading.Thread):
         self.exitFlag = 0
         self.daemon = True
         self.serverID = str(uuid.uuid4())[:8]
-
-        self.midiRouter = MidiRouter.MidiRouter(midiportindex)
-        if not self.midiRouter.midiActive():
-            print("--- No midi loopback port available, incoming messages to Ableton will be considerably slower")
-            print("--- Is loopMidi running?\n")
 
         if not stageaddress:
             print("Creating internal stage at tcp://127.0.0.1:6000")
@@ -64,7 +57,6 @@ class LiveRouter(threading.Thread):
         self.node.request_register_node()
 
         # Create registration thread
-        self.register_methods()
         self.registrar = RegistrationThread(self.node)
         self.registrar.daemon = True
         self.registrar.start()
@@ -78,7 +70,11 @@ class LiveRouter(threading.Thread):
         self.udpEndpoint.add_ready_callback(self.endpoint_ready)
         self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
         self.outputSockets = {}
+        
         self.clients = set()
+        self.clientConnected = False
+        self.clientConnectedCallback = None
+        self.set_client_connection_status(False)        
 
     def run(self):
         while not self.exitFlag:
@@ -102,6 +98,7 @@ class LiveRouter(threading.Thread):
                     self.inputSockets[client] = endpoint
                     self.outputSockets[client] = endpoint
                     self.clients.add(endpoint)
+                    self.set_client_connection_status(True)
                 elif s == self.udpEndpoint.socket:
                     try:
                         self.udpEndpoint.recv_msg()
@@ -117,33 +114,54 @@ class LiveRouter(threading.Thread):
                     except (ReadError, RuntimeError), e:
                         Log.network("Client socket closed")
                         endpoint.close()
+                        self.set_client_connection_status(False)
                         try:
                             del self.inputSockets[endpoint.socket]
                             del self.outputSockets[endpoint.socket]
                             self.clients.remove(endpoint)
-                            outputready.remove(endpoint.socket)
+                            try:
+                                outputready.remove(endpoint.socket)
+                            except ValueError:
+                                pass
                         except KeyError, e:
                             Log.network("Socket missing. In hangup")
         
             for s in outputready:
-                endpoint = self.outputSockets[s]
+                try:
+                    endpoint = self.outputSockets[s]
+                except KeyError:
+                    continue
+
                 try:
                     while 1:
                         msg = endpoint.outgoingMailbox.get_nowait()
                         endpoint.send(msg)
                 except Queue.Empty:
                     pass
-                    # del self.outputSockets[endpoint.socket]
+
+                if endpoint.enteringImmediate:
+                    try:
+                        del self.outputSockets[endpoint.socket]
+                    except KeyError:
+                        pass
+                    endpoint.enteringImmediate = False
+                    endpoint.immediate = True
         self.join(1)
 
     def endpoint_ready(self, endpoint):
         Log.network("Marking output socket as having queued messages")
         self.outputSockets[endpoint.socket] = endpoint
 
+    def set_client_connection_status(self, status):
+        self.clientConnected = status
+        if self.clientConnectedCallback:
+            self.clientConnectedCallback()
+
     def incoming_client_handshake(self):
         Log.network("Client sent handshake")
         for endpoint in self.clients:
             endpoint.send_handshake_ack()
+            endpoint.enteringImmediate = True
 
     def stop(self):
         self.exitFlag = 1
@@ -153,22 +171,8 @@ class LiveRouter(threading.Thread):
         self.node.close()
         if(hasattr(self, "stageNode")):
             self.stageNode.close()
-        self.midiRouter.close()
         self.tcpEndpoint.close()
         self.udpEndpoint.close()
-
-    def register_methods(self):
-        if(self.midiRouter.midiActive()):
-            self.node.request_register_method(
-                "play_note",
-                ZstMethod.WRITE,
-                {
-                    "trackindex": None,
-                    "note": None,
-                    "state": None,
-                    "velocity": None
-                },
-                self.midiRouter.play_midi_note)
 
     def event(self, event):
         methodName = event.subject[2:]
