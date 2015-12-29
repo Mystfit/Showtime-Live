@@ -1,34 +1,16 @@
 from setuptools import setup, find_packages
-import os
+import os, platform
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-# def install_midi_remote_scripts():
-#       installpath = ""
-#       liveinstallations = None
-
-#       scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Showtime_Live", "Midi_Remote_Scripts", "ShowtimeBridge")
-
-#       if platform.system() == "Windows":
-#             liveinstallations = glob.glob(os.path.abspath(os.path.join(os.getenv("PROGRAMDATA"), "Ableton", "Live*")) + "*")
-#             liveinstallations = [os.path.join(path, "Resources", "MIDI Remote Scripts", "ShowtimeBridge") for path in liveinstallations]
-
-#       elif platform.system() == "Darwin":
-#             liveinstallations = glob.glob(os.path.abspath(os.path.join(os.path.sep, "Applications", "Ableton Live")) + "*")
-#             liveinstallations = [os.path.join(path, "Contents", "App-Resources", "MIDI Remote Scripts", "ShowtimeBridge") for path in liveinstallations]
-
-#       if len(liveinstallations) > 0:
-#             for path in liveinstallations:
-#                   try:
-#                         rmtree(path)
-#                   except:
-#                         pass
-
-#                   print("Installing midi remote scripts to {0}".format(path))
-#                   copytree(scriptspath, path, ignore=ignore_patterns('*.pyc', 'tmp*'))
-#       else:
-#             print("No Ableton Live installations detected.")
+platform_options = None
+if platform.system() == 'Darwin':
+      platform_options = dict(
+         setup_requires=['py2app'],
+         app=['Showtime_Live/ShowtimeLiveServer.py'],
+         options=dict(py2app=dict(argv_emulation=True))
+      )
 
 setup(name='Showtime-Live',
       version='1.5.1',
@@ -40,7 +22,8 @@ setup(name='Showtime-Live',
       scripts=['scripts/ShowtimeLiveServer.py'],
       license='MIT',
       install_requires=["Showtime-Python", "rtmidi_python", "zeroconf"],
-      packages=find_packages()
+      packages=find_packages(),
+      **platform_options
       )
 
 # install_midi_remote_scripts()
