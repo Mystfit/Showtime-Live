@@ -46,9 +46,6 @@ class ShowtimeBridge(ControlSurface):
             # Midi clock to trigger incoming message check
             self.clock = LoopingEncoderElement(0, 119)
 
-            # Create the root wrapper
-            LiveSong.add_instance(LiveSong(getSong()))
-
             self.refresh_state()
             self._suppress_send_midi = False
 

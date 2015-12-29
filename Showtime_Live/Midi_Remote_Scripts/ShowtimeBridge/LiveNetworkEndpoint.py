@@ -162,5 +162,8 @@ class LiveNetworkEndpoint():
         Log.network("Handshake completed")
         self.sync_actions()
 
+        # Add wrappers to Live objects
+        LiveSong.add_instance(LiveSong(getSong()))
+
     def heartbeat_lost(self):
         self.tcpEndpoint.hangup = False
