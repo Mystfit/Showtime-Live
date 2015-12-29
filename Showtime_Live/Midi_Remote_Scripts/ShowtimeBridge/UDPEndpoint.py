@@ -5,6 +5,7 @@ import time
 from Logger import Log
 
 class HeartbeatThread(threading.Thread):
+    '''Thread dedicated to sending heartbeat messages over the UDP socket'''
     def __init__(self, endpoint):
         threading.Thread.__init__(self)
         self.name = "heartbeat_thread"
@@ -24,6 +25,7 @@ class HeartbeatThread(threading.Thread):
 
 
 class UDPEndpoint(NetworkEndpoint):
+    '''Network endpoint using UDP'''
     HEARTBEAT_DURATION = 2000
     HEARTBEAT_TIMEOUT = HEARTBEAT_DURATION * 2
 
@@ -35,8 +37,9 @@ class UDPEndpoint(NetworkEndpoint):
         NetworkEndpoint.__init__(self, localPort, remotePort, threaded)
 
     def create_socket(self):
+        '''Create the UDP socket for this endpoint'''
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.settimeout(5)
         self.socket.bind(self.localAddr)
 
@@ -53,10 +56,12 @@ class UDPEndpoint(NetworkEndpoint):
         NetworkEndpoint.close(self)
 
     def send_heartbeat(self):
+        '''Send heartbeat message'''
         if(NetworkEndpoint.current_milli_time() > self.lastTransmittedHeartbeatTime + UDPEndpoint.HEARTBEAT_DURATION):
             self.send_msg(SimpleMessage(NetworkPrefixes.HEARTBEAT, self.heartbeatID), True, self.remoteAddr)
 
     def check_heartbeat(self):
+        '''Check if we've received a UDP heartbeat from a remote UDP endpoint'''
         if NetworkEndpoint.current_milli_time() > self.lastPeerHeartbeatTime + UDPEndpoint.HEARTBEAT_TIMEOUT:
             self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
             Log.info("Heartbeat timeout")

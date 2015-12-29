@@ -71,7 +71,7 @@ class LiveRouter(threading.Thread):
         self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
         self.outputSockets = {}
         
-        self.clients = set()
+        self.client = None
         self.clientConnected = False
         self.clientConnectedCallback = None
         self.set_client_connection_status(False)        
@@ -87,7 +87,10 @@ class LiveRouter(threading.Thread):
                     Log.debug(self.outputSockets.keys())
 
             for s in inputready: 
-                if s == self.tcpEndpoint.socket: 
+                if s == self.tcpEndpoint.socket:
+                    if self.client:
+                        Log.error("Live instance already connected. Only one instance can be connected at a time!")
+                        return
                     client, address = self.tcpEndpoint.socket.accept() 
                     Log.network("New client connecting. Socket is %s" % client)
                     endpoint = TCPEndpoint(-1, -1, True, False, client)
@@ -97,7 +100,7 @@ class LiveRouter(threading.Thread):
                     # endpoint.add_ready_callback(self.endpoint_ready)
                     self.inputSockets[client] = endpoint
                     self.outputSockets[client] = endpoint
-                    self.clients.add(endpoint)
+                    self.client = endpoint
                     self.set_client_connection_status(True)
                 elif s == self.udpEndpoint.socket:
                     try:
@@ -118,7 +121,7 @@ class LiveRouter(threading.Thread):
                         try:
                             del self.inputSockets[endpoint.socket]
                             del self.outputSockets[endpoint.socket]
-                            self.clients.remove(endpoint)
+                            self.client = None
                             try:
                                 outputready.remove(endpoint.socket)
                             except ValueError:
@@ -159,9 +162,9 @@ class LiveRouter(threading.Thread):
 
     def incoming_client_handshake(self):
         Log.network("Client sent handshake")
-        for endpoint in self.clients:
-            endpoint.send_handshake_ack()
-            endpoint.enteringImmediate = True
+        if self.client:
+            self.client.send_handshake_ack()
+            self.client.enteringImmediate = True
 
     def stop(self):
         self.exitFlag = 1
