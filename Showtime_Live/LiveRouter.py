@@ -1,23 +1,23 @@
-import sys, threading, os, Queue, time, select, socket, uuid
-sys.path.append(os.path.join(os.path.dirname(__file__), "Midi_Remote_Scripts"))
-
+import Queue
+import select
+import socket
+import threading
+import uuid
 from Showtime.zst_node import ZstNode
 from Showtime.zst_stage import ZstStage
-from Showtime.zst_method import ZstMethod
 from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkEndpoint, NetworkErrors, ReadError
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint
 from ShowtimeBridge.TCPEndpoint import TCPEndpoint
 from ShowtimeBridge.Logger import Log
-from zeroconf import ServiceBrowser, ServiceInfo, Zeroconf
 
 
 class RegistrationThread(threading.Thread):
+    """Thread dedicated to incoming registration requests so we don't break Showtime req/rep timing"""
     def __init__(self, node):
         threading.Thread.__init__(self)
         self.name = "zst_registrar"
         self.exitFlag = 0
         self.daemon = True
-
         self.node = node
         self.queued_registrations = Queue.Queue()
 
@@ -70,28 +70,33 @@ class LiveRouter(threading.Thread):
         self.udpEndpoint.add_ready_callback(self.endpoint_ready)
         self.inputSockets = {self.tcpEndpoint.socket: self.tcpEndpoint, self.udpEndpoint.socket: self.udpEndpoint}
         self.outputSockets = {}
-        
+
         self.client = None
         self.clientConnected = False
         self.clientConnectedCallback = None
-        self.set_client_connection_status(False)        
+        self.set_client_connection_status(False)
 
     def run(self):
         while not self.exitFlag:
+            inputready = []
+            outputready = []
+            exceptready = []
+
             try:
-                inputready, outputready, exceptready = select.select(self.inputSockets.keys(), self.outputSockets.keys(),[], 1)
+                inputready, outputready, exceptready = select.select(self.inputSockets.keys(),
+                                                                     self.outputSockets.keys(), [], 1)
             except socket.error, e:
                 if e[0] == NetworkErrors.EBADF:
                     Log.error("Bad file descriptor! Probably a dead socket passed to select")
                     Log.debug(self.inputSockets.keys())
                     Log.debug(self.outputSockets.keys())
 
-            for s in inputready: 
+            for s in inputready:
                 if s == self.tcpEndpoint.socket:
                     if self.client:
                         Log.error("Live instance already connected. Only one instance can be connected at a time!")
                         return
-                    client, address = self.tcpEndpoint.socket.accept() 
+                    client, address = self.tcpEndpoint.socket.accept()
                     Log.network("New client connecting. Socket is %s" % client)
                     endpoint = TCPEndpoint(-1, -1, True, False, client)
                     endpoint.add_event_callback(self.event)
@@ -105,30 +110,30 @@ class LiveRouter(threading.Thread):
                 elif s == self.udpEndpoint.socket:
                     try:
                         self.udpEndpoint.recv_msg()
-                    except ReadError, e:
+                    except ReadError:
                         pass
                         # Log.network("Read failed. UDP probably closed. %s" % e)
                     except RuntimeError, e:
                         Log.network("Receive failed. Reason: %s" % e)
-                else: 
+                else:
                     endpoint = self.inputSockets[s]
                     try:
                         endpoint.recv_msg()
-                    except (ReadError, RuntimeError), e:
+                    except (ReadError, RuntimeError):
                         Log.network("Client socket closed")
                         endpoint.close()
                         self.set_client_connection_status(False)
+                        self.client = None
                         try:
                             del self.inputSockets[endpoint.socket]
                             del self.outputSockets[endpoint.socket]
-                            self.client = None
                             try:
                                 outputready.remove(endpoint.socket)
                             except ValueError:
                                 pass
-                        except KeyError, e:
+                        except KeyError:
                             Log.network("Socket missing. In hangup")
-        
+
             for s in outputready:
                 try:
                     endpoint = self.outputSockets[s]
@@ -149,6 +154,10 @@ class LiveRouter(threading.Thread):
                         pass
                     endpoint.enteringImmediate = False
                     endpoint.immediate = True
+
+            for s in exceptready:
+                Log.error("Socket %s in select() except list!. Check for errors." % s)
+
         self.join(1)
 
     def endpoint_ready(self, endpoint):
@@ -172,21 +181,22 @@ class LiveRouter(threading.Thread):
     def close(self):
         self.registrar.stop()
         self.node.close()
-        if(hasattr(self, "stageNode")):
+        if hasattr(self, "stageNode"):
             self.stageNode.close()
         self.tcpEndpoint.close()
         self.udpEndpoint.close()
 
     def event(self, event):
-        methodName = event.subject[2:]
-        msgType = event.subject[:1]
+        methodname = event.subject[2:]
+        msgtype = event.subject[:1]
 
-        if msgType == NetworkPrefixes.REGISTRATION:
-            self.registrar.add_registration_request(methodName, event.msg["methodaccess"], event.msg["args"], self.incoming)
-        elif msgType == NetworkPrefixes.OUTGOING or msgType == NetworkPrefixes.RESPONDER:
+        if msgtype == NetworkPrefixes.REGISTRATION:
+            self.registrar.add_registration_request(methodname, event.msg["methodaccess"], event.msg["args"],
+                                                    self.incoming)
+        elif msgtype == NetworkPrefixes.OUTGOING or msgtype == NetworkPrefixes.RESPONDER:
             Log.info("Live-->ST: " + str(event.subject) + '=' + str(event.msg))
-            if methodName in self.node.methods:
-                self.node.update_local_method_by_name(methodName, event.msg)
+            if methodname in self.node.methods:
+                self.node.update_local_method_by_name(methodname, event.msg)
             else:
                 print "Outgoing method not registered!"
 

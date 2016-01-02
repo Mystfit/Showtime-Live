@@ -10,6 +10,8 @@ class LoopingEncoderElement(EncoderElement):
         EncoderElement.__init__(self, msg_type=MIDI_CC_TYPE, channel=channel, identifier=identifier, map_mode=Live.MidiMap.MapMode.absolute)
         self._report_input = True
         self._report_output = True
+        self.log_message = None
+        self.publisher = None
 
     def set_publisher(self, publisher):
         self.publisher = publisher

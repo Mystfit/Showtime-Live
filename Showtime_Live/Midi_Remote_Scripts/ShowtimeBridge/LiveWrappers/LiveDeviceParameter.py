@@ -23,7 +23,7 @@ class LiveDeviceParameter(LiveWrapper):
         if self.handle():
             try:
                 self.handle().remove_value_listener(self.value_updated)
-            except RuntimeError:
+            except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove deviceparameter listener")
 
     @classmethod
@@ -40,7 +40,6 @@ class LiveDeviceParameter(LiveWrapper):
             "max": self.handle().max,
         }   
         return LiveWrapper.to_object(self, params)
-        
 
     # --------
     # Incoming

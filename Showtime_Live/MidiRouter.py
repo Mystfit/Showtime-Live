@@ -9,13 +9,13 @@ class Clock(threading.Thread):
     # The clock class sends a 1ms midi CC message with an incrementing value
     # that the Live ControlSurface can use to trigger faster event updates
     # ----
-    def __init__(self, midiPort):
+    def __init__(self, midiport):
         threading.Thread.__init__(self)
         self.exitFlag = 0
         self.setDaemon(True)
         self.clockVal = 0
         self.rate = 0.001
-        self.midi_out = midiPort
+        self.midi_out = midiport
         self.midi_active = False
 
     def stop(self):
@@ -25,14 +25,13 @@ class Clock(threading.Thread):
     def run(self):
         while not self.exitFlag and self.midi_out:
             self.clockVal += 1
-            self.clockVal = self.clockVal % 127
+            self.clockVal %= 127
             if self.midi_active:
                 self.midi_out.send_message([0xB0, 119, self.clockVal])
             time.sleep(self.rate)
 
 
 class MidiRouter:
-
     NOTE_ON = 0x90
     NOTE_OFF = 0x80
 
@@ -40,7 +39,7 @@ class MidiRouter:
         # Setup midi port 
         self.midiportindex = midiportindex
         self.midi_active = False
-        self.midi_out = self.createMidi(midiportindex)
+        self.midi_out = self.create_midi(midiportindex)
 
         if not self.midi_out:
             return
@@ -61,10 +60,10 @@ class MidiRouter:
             print "Clock found!"
             self.clock.midi_active = state
 
-    def midiActive(self):
+    def is_midi_active(self):
         return self.midi_active
 
-    def createMidi(self, midiportindex):
+    def create_midi(self, midiportindex):
         # Midi startup. Try creating a virtual port. Doesn't work on Windows
         midi_out = rtmidi.MidiOut()
 
@@ -81,7 +80,7 @@ class MidiRouter:
                 self.set_midi_active(True)
         return midi_out
 
-    def listMidiPorts(self):
+    def list_midi_ports(self):
         print("Available MidiOut ports:")
         for portindex, port in enumerate(self.midi_out.ports):
             print str(portindex) + ": " + str(port)
@@ -110,6 +109,11 @@ class MidiRouter:
         self.lastNote = note
         self.midi_out.send_message([trigger, int(message.args["note"]), velocity])
 
+
 if __name__ == "__main__":
     m = MidiRouter(1)
-    # m.close()
+    try:
+        while 1:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        m.close()

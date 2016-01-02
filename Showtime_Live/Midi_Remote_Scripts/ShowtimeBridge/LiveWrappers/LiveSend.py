@@ -22,7 +22,7 @@ class LiveSend(LiveWrapper):
         if self.handle():
             try:
                 self.handle().remove_value_listener(self.send_updated)
-            except RuntimeError:
+            except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove send listener")
 
     @classmethod

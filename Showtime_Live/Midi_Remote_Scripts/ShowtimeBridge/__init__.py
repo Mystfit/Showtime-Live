@@ -2,6 +2,10 @@
 #     from ShowtimeBridge import ShowtimeBridge
 # except ImportError, e:
 #     pass
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
+
 
 def create_instance(c_instance):
     try:
@@ -13,7 +17,8 @@ def create_instance(c_instance):
         bootstrap.log_message("Couldn't build Showtime. Falling back to generic ControlSurface for logging")
         bootstrap.log_message(err)
 
-        import traceback, os.path, sys
+        import traceback
+        import os.path
         top = traceback.extract_tb(sys.exc_info()[2])[-1]
         bootstrap.log_message(', '.join([type(err).__name__, os.path.basename(top[0]), str(top[1])]))
 

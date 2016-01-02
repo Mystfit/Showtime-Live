@@ -1,4 +1,10 @@
-class Log():
+import Utils
+
+
+class Log:
+    def __init__(self):
+        pass
+
     LOG_INFO = 2
     LOG_WARN = 1
     LOG_ERRORS = 0
@@ -12,7 +18,7 @@ class Log():
     }
 
     _loggermethod = None
-    _networklogging = False
+    useNetworkLogging = False
     level = 0
 
     @staticmethod
@@ -32,13 +38,13 @@ class Log():
 
     @staticmethod
     def set_log_level(loglevel):
-        Log.level = loglevel
-        print("Setting log level to %s" % Log.titles[loglevel])
-    
+        Log.level = Utils.Utils.clamp(loglevel, -1, 2)
+        Log.write("Setting log level to %s" % Log.titles[loglevel])
+
     @staticmethod
     def set_log_network(status):
-        Log._networklogging = status
-        print("Setting network logging to %s" % status)
+        Log.useNetworkLogging = status
+        Log.write("Setting network logging to %s" % status)
 
     @staticmethod
     def write(message):
@@ -69,5 +75,5 @@ class Log():
 
     @staticmethod
     def network(message):
-        if Log._networklogging:
+        if Log.useNetworkLogging:
             Log.write("NET: " + str(message))

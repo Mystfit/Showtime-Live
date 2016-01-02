@@ -1,20 +1,19 @@
-from NetworkEndpoint import NetworkEndpoint, NetworkPrefixes, NetworkErrors, SimpleMessage
-import threading
-import time
 import socket
-import errno
+
 from Logger import Log
+from NetworkEndpoint import NetworkEndpoint, NetworkPrefixes, NetworkErrors, SimpleMessage
 
 
 class TCPEndpoint(NetworkEndpoint):
-    def __init__(self, localPort, remotePort, threaded=True, serverSocket=True, socket=None):
-        self.serverSocket = serverSocket
+    """Network endpoint using TCP"""
+    def __init__(self, localport, remoteport, threaded=True, isserversocket=True, existingsocket=None):
+        self.serverSocket = isserversocket
         self.hangup = False
         self.clientHandshakeCallbacks = set()
         self.handshakeAckCallbacks = set()
-        if socket:
-            self.socket = socket
-        NetworkEndpoint.__init__(self, localPort, remotePort, threaded)
+        if existingsocket:
+            self.socket = existingsocket
+        NetworkEndpoint.__init__(self, localport, remoteport, threaded)
 
     def close(self):
         self.hangup = True
@@ -51,22 +50,19 @@ class TCPEndpoint(NetworkEndpoint):
                 elif e[0] == NetworkErrors.EAGAIN:
                     Log.network("TCP connecting...")
                     retries -= 1
+                elif e[0] == socket.timeout:
+                    Log.error("Timed out")
+                    self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
                 else:
                     Log.error("Connection failed!")
                     Log.error("Reason: " + str(e))
                     self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
                     break
-            except socket.timeout, e:
-                Log.error("Timed out")
-                self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
 
         if status == 0:
             self.connectionStatus = NetworkEndpoint.PIPE_CONNECTED
         else:
             Log.error("Connection failed with error %s" % status)
-
-        if self.threaded and not self.is_alive():
-            self.start()
         
         return self.connectionStatus
 
@@ -74,7 +70,7 @@ class TCPEndpoint(NetworkEndpoint):
         if event.subject == NetworkPrefixes.HANDSHAKE:
             Log.network("TCP handshake received. Socket is %s" % self.socket)
             if self.connectionStatus == NetworkEndpoint.PIPE_CONNECTED:
-                self.connectionStatus == NetworkEndpoint.HANDSHAKING
+                self.connectionStatus = NetworkEndpoint.HANDSHAKING
                 for callback in self.clientHandshakeCallbacks:
                     callback()
             return

@@ -1,6 +1,5 @@
-from LiveWrapper import *
 from LiveClip import LiveClip
-from ..Utils import Utils
+from LiveWrapper import *
 
 
 class LiveClipslot(LiveWrapper):
@@ -25,7 +24,7 @@ class LiveClipslot(LiveWrapper):
                 self.handle().remove_has_clip_listener(self.update_hierarchy)
                 self.handle().remove_is_triggered_listener(self.clip_slot_status)
                 self.handle().remove_playing_status_listener(self.clip_slot_status)
-            except RuntimeError:
+            except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove clipslot listeners")
 
     @classmethod
@@ -42,11 +41,3 @@ class LiveClipslot(LiveWrapper):
     def clip_slot_status(self):
         for clip in self.children():
             clip.update(LiveClip.CLIP_STATUS, {"triggered": self.handle().is_triggered, "playing": self.handle().is_playing})
-
-    # --------
-    # Incoming
-    # --------
-
-    # ---------
-    # Utilities
-    # ---------

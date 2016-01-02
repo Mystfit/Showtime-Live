@@ -1,8 +1,7 @@
-import socket
-import threading
-import time
 import Queue
+import socket
 import struct
+import time
 
 try:
     import json
@@ -12,6 +11,9 @@ from Logger import Log
 
 
 class NetworkErrors:
+    def __init__(self):
+        pass
+
     import platform
     import errno
     if platform.system() == "Windows":
@@ -27,6 +29,9 @@ class NetworkErrors:
 
 
 class NetworkPrefixes:
+    def __init__(self):
+        pass
+
     INCOMING = "I"
     OUTGOING = "O"
     RESPONDER = "L"
@@ -69,12 +74,12 @@ class SimpleMessage:
         return len(str(self))
 
     @staticmethod
-    def parse(rawMsg):
-        jsonmsg = json.loads(rawMsg)
-        return SimpleMessage(jsonmsg[0], jsonmsg[1])
+    def parse(msg):
+        parsed = json.loads(msg)
+        return SimpleMessage(parsed[0], parsed[1])
 
 
-class NetworkEndpoint():
+class NetworkEndpoint:
     MAX_MSG_SIZE = 1024
 
     # Connection statuses
@@ -83,10 +88,10 @@ class NetworkEndpoint():
     HANDSHAKING = 2
     HANDSHAKE_COMPLETE = 3
 
-    def __init__(self, localPort, remotePort, threaded=True):
+    def __init__(self, localport, remoteport, threaded=True):
         self.threaded = threaded
-        self.localAddr = ((''), localPort)
-        self.remoteAddr = (("127.0.0.1"), remotePort)
+        self.localAddr = ('', localport)
+        self.remoteAddr = ("127.0.0.1", remoteport)
         self.eventCallbacks = set()
         self.readyCallbacks = set()
         self.closingCallbacks = set()
@@ -115,16 +120,16 @@ class NetworkEndpoint():
         self.recv()
 
     def recv(self):
-        size = self._msgLength()
+        size = self._msg_length()
         data = self._read(size)
         frmt = "!%ds" % size
         msg = None
         if data:
-            msg = struct.unpack(frmt,data)
+            msg = struct.unpack(frmt, data)
         if msg:
             self.event(SimpleMessage.parse(msg[0]))
 
-    def _msgLength(self):
+    def _msg_length(self):
         d = self._read(4)
         s = struct.unpack('!I', d)
         return s[0]
@@ -135,10 +140,10 @@ class NetworkEndpoint():
             retries = 10
             while retries > 0:
                 try:
-                    dataTmp = self.socket.recv(min(size-len(data), NetworkEndpoint.MAX_MSG_SIZE))
-                    data += dataTmp
+                    tempdata = self.socket.recv(min(size-len(data), NetworkEndpoint.MAX_MSG_SIZE))
+                    data += tempdata
                     retries = 0
-                    if dataTmp == '':
+                    if tempdata == '':
                         raise RuntimeError("Socket returned empty string. Connection broken")
                 except socket.error, e:
                     if e[0] == NetworkErrors.EAGAIN:
@@ -162,10 +167,10 @@ class NetworkEndpoint():
     def send(self, msg, address=None):
         msg = str(msg)
         frmt = "!%ds" % len(msg)
-        packedMsg = struct.pack(frmt, msg)
-        packedHdr = struct.pack('!I', len(packedMsg))
-        self._send(packedHdr, address)
-        self._send(packedMsg, address)
+        packedmsg = struct.pack(frmt, msg)
+        packedheader = struct.pack('!I', len(packedmsg))
+        self._send(packedheader, address)
+        self._send(packedmsg, address)
 
     def _send(self, msg, address=None):
         sent = 0
@@ -206,5 +211,6 @@ class ReadError(Exception):
     """Exception for read errors on the endpoint"""
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)

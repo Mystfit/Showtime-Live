@@ -1,9 +1,7 @@
-from LiveWrapper import *
-from LiveDeviceParameter import LiveDeviceParameter
 from LiveSend import LiveSend
-from ..Utils import Utils
+from LiveWrapper import *
 
-
+# TODO: Update mixer
 class LiveMixer(LiveWrapper):
     # Message types
     MIXER_SENDS_UPDATED = "mixer_sends_updated"
@@ -27,7 +25,7 @@ class LiveMixer(LiveWrapper):
         if self.handle():
             try:
                 self.handle().remove_sends_listener(self.sends_updated)
-            except RuntimeError:
+            except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove sends listener")
 
     @classmethod

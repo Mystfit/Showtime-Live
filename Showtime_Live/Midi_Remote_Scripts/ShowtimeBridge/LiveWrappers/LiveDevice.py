@@ -19,7 +19,7 @@ class LiveDevice(LiveWrapper):
         if self.handle():
             try:
                 self.handle().remove_parameters_listener(self.parameters_updated)
-            except RuntimeError:
+            except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove device listener")
 
     @classmethod
@@ -48,5 +48,5 @@ class LiveDevice(LiveWrapper):
     # Utilities
     # ---------
     def update_hierarchy(self):   
-        Log.info("--- Parameter list changed")
+        Log.info("%s - Parameter list changed" % self.id())
         LiveWrapper.update_hierarchy(self, LiveDeviceParameter, self.handle().parameters)

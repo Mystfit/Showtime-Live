@@ -3,11 +3,14 @@ from LiveTrack import LiveTrack
 import itertools
 from ..Utils import Utils
 
+
 class LiveSong(LiveWrapper):
     # Message types
     SONG_LAYOUT = "song_layout"
     SONG_TRACKS_UPDATED = "song_tracks_updated"
     SONG_METERS = "song_meters"
+    SONG_LOGGING_LEVEL = "log_level"
+    SONG_NETWORK_LOGGING = "log_network"
 
     def create_handle_id(self):
         return "song"
@@ -22,7 +25,6 @@ class LiveSong(LiveWrapper):
             self.handle().add_tracks_listener(self.update_hierarchy)
             self.handle().add_return_tracks_listener(self.update_hierarchy)
 
-
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
@@ -30,7 +32,7 @@ class LiveSong(LiveWrapper):
                 self.handle().remove_current_song_time_listener(self.song_time_updated)
                 self.handle().remove_tracks_listener(self.update_hierarchy)
                 self.handle().remove_return_tracks_listener(self.update_hierarchy)
-            except RuntimeError:
+            except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove device listener")
 
 
@@ -39,6 +41,8 @@ class LiveSong(LiveWrapper):
         cls.add_outgoing_method(LiveSong.SONG_METERS)
         cls.add_outgoing_method(LiveSong.SONG_TRACKS_UPDATED)
         cls.add_incoming_method(LiveSong.SONG_LAYOUT, None, LiveSong.build_song_layout, True)
+        cls.add_incoming_method(LiveSong.SONG_LOGGING_LEVEL, ["log_level"], LiveSong.set_log_level)
+        cls.add_incoming_method(LiveSong.SONG_NETWORK_LOGGING, ["status"], LiveSong.set_network_logging)
 
     # --------
     # Outgoing
@@ -57,6 +61,16 @@ class LiveSong(LiveWrapper):
     # --------
     # Incoming
     # --------
+    @staticmethod
+    def set_log_level(args):
+        loglevel = int(args["log_level"])
+        Log.set_log_level(loglevel)
+
+    @staticmethod
+    def set_network_logging(args):
+        status = int(args["status"])
+        Log.set_log_network(status)
+
     @staticmethod
     def build_song_layout(args):
         Log.info("Returning song layout")
@@ -77,7 +91,8 @@ class LiveSong(LiveWrapper):
 
     # ---------
     # Hierarchy
+    # ---------
     def update_hierarchy(self):
-        Log.info("- Track list changed")
+        Log.info("%s - Track list changed" % self.id())
         tracks = list(itertools.chain(self.handle().tracks, self.handle().return_tracks))
         LiveWrapper.update_hierarchy(self, LiveTrack, tracks)

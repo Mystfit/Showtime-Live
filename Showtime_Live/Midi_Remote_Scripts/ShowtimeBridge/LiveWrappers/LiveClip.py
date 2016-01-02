@@ -29,7 +29,6 @@ class LiveClip(LiveWrapper):
             if self.handle().is_midi_clip:
                 self.handle().add_notes_listener(self.notes_updated)
 
-
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
@@ -46,7 +45,6 @@ class LiveClip(LiveWrapper):
         cls.add_incoming_method(LiveClip.CLIP_NOTES_SET, ["id"], LiveClip.queue_clip_notes_set)
         cls.add_incoming_method(LiveClip.CLIP_BROADCAST_PLAYING_POSITION, ["id"], LiveClip.queue_broadcast_playing_pos)
 
-
     def to_object(self):
         params = LiveWrapper.to_object(self)
 
@@ -54,9 +52,8 @@ class LiveClip(LiveWrapper):
         params.update({
             "index": self.parent().handleindex,
             "parent": self.parent().parent().id(),
-            "notes": self.handle().get_notes(0.0, 0, self.handle().length, 127) if(self.handle().is_midi_clip) else None
+            "notes": self.handle().get_notes(0.0, 0, self.handle().length, 127) if self.handle().is_midi_clip else None
         })
-
         return params
 
     # --------
@@ -97,7 +94,3 @@ class LiveClip(LiveWrapper):
     def apply_clip_notes_set(self, value):
         self.handle().set_notes(value)
         Log.info("Clip notes:%s on %s" % (self.handle().value, self.id()))
-
-    # ---------
-    # Utilities
-    # ---------
