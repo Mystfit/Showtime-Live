@@ -38,11 +38,11 @@ class LiveWrapper(object):
     def __init__(self, handle, handleindex=None, parent=None):
         self._handle = handle
         self._children = set()
-        
+
         self._parent = parent
         if parent:
             self._parent.add_child(self)
-        
+
         self.handleindex = handleindex
 
         self._id = self.create_handle_id()
@@ -62,21 +62,21 @@ class LiveWrapper(object):
         if instance.parent():
             if instance.id() in instance.parent().children():
                 instance.parent().children().remove(instance.id())
-        for child in instance._children:
+        for child in instance.children():
             LiveWrapper.destroy(child)
-        instance._children.clear()
+        instance.children().clear()
         instance.destroy_listeners()
         try:
-            del instance.__class__._instances[instance.id()]
+            del instance.__class__.instances_dict()[instance.id()]
         except KeyError:
             Log.warn("%s missing. Already deleted." % instance.id())
-        
+
     def create_listeners(self):
         """Create all listeners for this object"""
         if self.handle():
             try:
                 self.handle().add_name_listener(self.id_updated)
-            except:
+            except (RuntimeError, AttributeError):
                 pass
 
     def destroy_listeners(self):
@@ -84,7 +84,7 @@ class LiveWrapper(object):
         if self.handle():
             try:
                 self.handle().remove_name_listener(self.id_updated)
-            except:
+            except (RuntimeError, AttributeError):
                 pass
 
     # Hierarchy
@@ -98,7 +98,7 @@ class LiveWrapper(object):
         return self._parent
 
     def update_hierarchy(self, cls=None, livevector=None):
-        """Refreshes the hierarchy of wrappers underneath this wrapper"""   
+        """Refreshes the hierarchy of wrappers underneath this wrapper"""
         if cls is not None and livevector is not None:
             parentId = self.parent().id() if self.parent() else None
             cls.remove_child_wrappers(livevector, self.id())
@@ -118,7 +118,6 @@ class LiveWrapper(object):
                 totalExisting += 1
         Log.info("ADDING %s: %s added, %s existing." % (cls.__name__, totalNew, totalExisting))
 
-
     @classmethod
     def remove_child_wrappers(cls, livevector, idfilter=None):
         """Remove wrappers that are missing a live object"""
@@ -133,15 +132,13 @@ class LiveWrapper(object):
                 LiveWrapper.destroy(wrapper)
         Log.info("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
 
-    
     def add_child(self, child):
         """Add a child wrapper to this wrapper"""
         self._children.add(child)
-    
+
     def children(self):
         """Return all children of this wrapper"""
         return self._children
-
 
     # Class instances
     # ---------------
@@ -152,17 +149,22 @@ class LiveWrapper(object):
             cls._instances = {}
         cls._instances[instance.id()] = instance
 
-        diff_status = {"status": LiveWrapper.LAYOUT_ADDED} 
+        diff_status = {"status": LiveWrapper.LAYOUT_ADDED}
         diff_status.update(instance.to_object())
         LiveWrapper.queue_layout_diff(diff_status)
 
         return instance
 
     """Returns a list of all instances of this node available"""
+
     @classmethod
     def instances(cls):
         """Returns a list of all instances of this node available"""
         return cls._instances.values() if cls._instances else []
+
+    @classmethod
+    def instances_dict(cls):
+        return cls._instances
 
     @classmethod
     def clear_instances(cls):
@@ -182,20 +184,19 @@ class LiveWrapper(object):
         handleId = LiveWrapper.get_id_from_name(name)
         if handleId:
             return cls.find_wrapper_by_id(handleId)
-        else:
-            Log.info("No id in name. Searching in parent")
-            return LiveWrapper.find_wrapper_from_handle_parent(handle)
-        return None
+
+        Log.info("No id in name. Searching in parent")
+        return LiveWrapper.find_wrapper_from_handle_parent(handle)
 
     @staticmethod
     def find_wrapper_from_handle_parent(handle):
-        '''Find wrapper for a handle from its siblings'''
+        """Find wrapper for a handle from its siblings"""
         parentId = None
         try:
             parentId = LiveWrapper.get_id_from_name(handle.canonical_parent.name)
         except AttributeError:
             Log.info("Parent has no name. Handle is %s" % handle.canonical_parent)
-        
+
         parentWrapper = None
         for cls in LiveWrapper.__subclasses__():
             parentWrapper = cls.find_wrapper_by_id(parentId)
@@ -230,10 +231,9 @@ class LiveWrapper(object):
         if methodargs:
             for key in methodargs:
                 methodargkeys[key] = None
-        
+
         accessType = LiveWrapper.METHOD_RESPOND if isResponder else LiveWrapper.METHOD_WRITE
         cls._incoming_methods[methodname] = LiveMethodDef(methodname, accessType, methodargkeys, callback)
-
 
     # Network
     # -------
@@ -282,10 +282,9 @@ class LiveWrapper(object):
         LiveWrapper._endpoint.send_to_showtime(action, val)
 
     def respond(self, action, values):
-        """Send the updated wrapper value to the network""" 
+        """Send the updated wrapper value to the network"""
         val = {"value": values, "id": self.id()}
         LiveWrapper._endpoint.send_to_showtime(action, val, True)
-
 
     # ID methods
     # ----------
@@ -350,7 +349,7 @@ class LiveWrapper(object):
         idStr = re.search('(?<=' + LiveWrapper.ID_DELIM[0] + '\\' + LiveWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
         return idStr.group(0) if idStr else None
 
-    @staticmethod 
+    @staticmethod
     def get_original_name(name):
         nameStr = re.search('^.*(?=' + LiveWrapper.ID_DELIM[0] + ')', name)
         return nameStr.group(0) if nameStr else name
@@ -370,16 +369,18 @@ class LiveWrapper(object):
             "name": name,
             "parent": self.parent().id() if self.parent() else None,
             "index": self.handleindex
-        })      
+        })
         return params
 
     @staticmethod
     def queue_layout_diff(diffItem):
+        """Queues a layout diff message so we can send all updates at once"""
         LiveWrapper._layout_updates.append(diffItem)
         LiveWrapper._deferred_actions[LiveWrapper.send_layout_diff] = (None, None)
 
     @staticmethod
     def send_layout_diff(args):
+        """Sends accumulated layout diff to server"""
         LiveWrapper._endpoint.send_to_showtime(LiveWrapper.LAYOUT_UPDATED, {"val": LiveWrapper._layout_updates}, True)
         LiveWrapper._layout_updates[:] = []
 
