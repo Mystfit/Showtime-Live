@@ -5,6 +5,7 @@ import LiveUtils
 from _Framework.ControlSurface import ControlSurface
 from ControlSurfaceComponents.LoopingEncoderElement import LoopingEncoderElement
 from LiveWrappers.LiveWrapper import LiveWrapper
+from LiveWrappers.LiveSong import LiveSong
 from LiveNetworkEndpoint import LiveNetworkEndpoint
 from Logger import Log
 
@@ -66,4 +67,6 @@ class ShowtimeBridge(ControlSurface):
 
     def request_loop(self):
         self.endpoint.poll()
+        if len(LiveSong.instances()) > 0:
+            LiveSong.instances()[0].tick()
         LiveWrapper.process_deferred_actions()

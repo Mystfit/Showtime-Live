@@ -48,9 +48,11 @@ class LiveSong(LiveWrapper):
     # Outgoing
     # --------
     def song_time_updated(self):
+        self.tick()
         meterLevels = {}
         for track in LiveTrack.instances():
             if track:
+                # Batch track meters into one message
                 if track.handle():
                     if track.handle().has_midi_output:
                         Utils.truncate_float(track.handle().output_meter_level, 4)
@@ -96,3 +98,10 @@ class LiveSong(LiveWrapper):
         Log.info("%s - Track list changed" % self.id())
         tracks = list(itertools.chain(self.handle().tracks, self.handle().return_tracks))
         LiveWrapper.update_hierarchy(self, LiveTrack, tracks)
+
+    # ---------
+    # Utilities
+    # ---------
+    def tick(self):
+        for track in LiveTrack.instances():
+            track.tick()

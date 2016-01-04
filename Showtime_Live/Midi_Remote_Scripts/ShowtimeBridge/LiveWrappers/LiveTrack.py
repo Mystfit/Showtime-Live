@@ -1,4 +1,5 @@
 from LiveClipslot import LiveClipslot
+from LiveClip import LiveClip
 from LiveDevice import LiveDevice
 from LiveSend import LiveSend
 from LiveWrapper import *
@@ -10,6 +11,9 @@ class LiveTrack(LiveWrapper):
     TRACK_METER = "track_meter"
     TRACK_STOP = "track_stop"
     TRACK_MIXER_SENDS_UPDATED = "track_sends_updated"
+    TRACK_PLAYING_NOTES = "track_playing_notes"
+    NOTE_ON = "on"
+    NOTE_OFF = "off"
 
     # -------------------
     # Wrapper definitions
@@ -42,6 +46,7 @@ class LiveTrack(LiveWrapper):
     def register_methods(cls):
         cls.add_outgoing_method(LiveTrack.TRACK_METER)
         cls.add_outgoing_method(LiveTrack.TRACK_MIXER_SENDS_UPDATED)
+        cls.add_outgoing_method(LiveTrack.TRACK_PLAYING_NOTES)
         cls.add_incoming_method(LiveTrack.TRACK_STOP, ["id"], LiveTrack.stop_track)
 
     def to_object(self):
@@ -98,3 +103,51 @@ class LiveTrack(LiveWrapper):
     def update_sends(self):
         Log.info("%s - Sends changed" % self.id())
         LiveWrapper.update_hierarchy(self, LiveSend, self.handle().mixer_device.sends)
+
+    def tick(self):
+        # Find current playing notes for midi clips on this track
+        if self.handle().has_midi_input and self.handle().playing_slot_index > -1:
+            # How far to look ahead to reduce perceived latency
+            offset = 0.0
+
+            cliphandle = self.handle().clip_slots[self.handle().playing_slot_index].clip
+            playposition = cliphandle.playing_position + offset
+            if not hasattr(self, "lastplaypos") or self.lastplaypos > playposition:
+                self.lastplaypos = 0.0
+
+            # Elapsed time between last tick and now for this clip
+            delta = playposition - self.lastplaypos
+
+            # Get slice of notes from the clip based on current play time
+            # notes = cliphandle.get_notes(playposition - delta, 0, 0.2, 127)
+            notes = cliphandle.get_notes(self.lastplaypos, 0, delta, 127)
+            self.lastplaypos = playposition
+
+            if len(notes) > 0:
+                changednotes = []
+
+                if not hasattr(self, "playingnotes"):
+                    self.playingnotes = set()
+
+                # Determine stopped notes
+                Log.info(self.playingnotes)
+                stoppednotes = []
+                for note in self.playingnotes:
+                    if note[1] + note[2] < playposition or note[1] < playposition:
+                        stoppednotes.append(note)
+                        # changednotes.append({"status": LiveTrack.NOTE_OFF, "note": note})
+
+                #  Remove stopped notes outside of set
+                for note in stoppednotes:
+                    self.playingnotes.remove(note)
+
+                # Determine new notes not already playing
+                for note in notes:
+                    if note not in self.playingnotes:
+                        self.playingnotes.add(note)
+                        changednotes.append({"status": LiveTrack.NOTE_ON, "note": note})
+
+                # Send note diff to showtime
+                if len(changednotes) > 0:
+                    self.update(LiveTrack.TRACK_PLAYING_NOTES, changednotes)
+
