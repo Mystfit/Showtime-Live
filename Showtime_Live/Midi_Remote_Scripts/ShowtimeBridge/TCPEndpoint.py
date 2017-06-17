@@ -1,7 +1,14 @@
 import socket
 
-from Logger import Log
-from NetworkEndpoint import NetworkEndpoint, NetworkPrefixes, NetworkErrors, SimpleMessage
+try:
+    from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Logger import Log
+except ImportError:
+    from Logger import Log
+
+try:
+    from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.NetworkEndpoint import NetworkEndpoint, NetworkPrefixes, NetworkErrors, SimpleMessage
+except ImportError:
+    from NetworkEndpoint import NetworkEndpoint, NetworkPrefixes, NetworkErrors, SimpleMessage
 
 
 class TCPEndpoint(NetworkEndpoint):
@@ -42,7 +49,7 @@ class TCPEndpoint(NetworkEndpoint):
         while retries > 0:
             try:
                 status = self.socket.connect(self.remoteAddr)
-            except socket.error, e:
+            except socket.error as e:
                 if e[0] == NetworkErrors.EISCONN:
                     Log.network("...TCP connected!")
                     self.connectionStatus = NetworkEndpoint.PIPE_CONNECTED

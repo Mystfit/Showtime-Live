@@ -1,4 +1,8 @@
-import Queue
+try:
+    import queue as Queue
+except ImportError:
+    import Queue
+
 import socket
 import struct
 import time
@@ -7,7 +11,12 @@ try:
     import json
 except ImportError:
     import simplejson as json
-from Logger import Log
+
+try:
+    from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Logger import Log
+except ImportError:
+    print("Coultn't find logger")
+    from Logger import Log
 
 
 class NetworkErrors:
@@ -145,7 +154,7 @@ class NetworkEndpoint:
                     retries = 0
                     if tempdata == '':
                         raise RuntimeError("Socket returned empty string. Connection broken")
-                except socket.error, e:
+                except socket.error as e:
                     if e[0] == NetworkErrors.EAGAIN:
                         Log.warn("Socket busy. Trying again")
                         retries -= 1
@@ -165,7 +174,7 @@ class NetworkEndpoint:
                     callback(self)
 
     def send(self, msg, address=None):
-        msg = str(msg)
+        msg = str.encode(str(msg))
         frmt = "!%ds" % len(msg)
         packedmsg = struct.pack(frmt, msg)
         packedheader = struct.pack('!I', len(packedmsg))

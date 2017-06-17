@@ -1,9 +1,14 @@
-from NetworkEndpoint import NetworkEndpoint, SimpleMessage, NetworkPrefixes
+try:
+    from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.NetworkEndpoint import NetworkEndpoint, SimpleMessage, NetworkPrefixes
+except ImportError:
+    from NetworkEndpoint import NetworkEndpoint, SimpleMessage, NetworkPrefixes
 import threading
 import socket
 import time
-from Logger import Log
-
+try:
+    from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Logger import Log
+except ImportError:
+    from Logger import Log
 
 class HeartbeatThread(threading.Thread):
     """Thread dedicated to sending heartbeat messages over the UDP socket"""
@@ -27,8 +32,8 @@ class HeartbeatThread(threading.Thread):
 
 class UDPEndpoint(NetworkEndpoint):
     """Network endpoint using UDP"""
-    HEARTBEAT_DURATION = 2000
-    HEARTBEAT_TIMEOUT = HEARTBEAT_DURATION * 2
+    HEARTBEAT_DURATION = 1000
+    HEARTBEAT_TIMEOUT = HEARTBEAT_DURATION * 5
 
     def __init__(self, localport, remoteport, threaded=True, heartbeatid=None):
         NetworkEndpoint.__init__(self, localport, remoteport, threaded)
@@ -37,6 +42,7 @@ class UDPEndpoint(NetworkEndpoint):
         self.heartbeatID = heartbeatid
         self.lastReceivedHeartbeatID = None
         self.heartbeatThread = None
+        self.lastheartbeattime = 0
 
     def create_socket(self):
         """Create the UDP socket for this endpoint"""
@@ -47,6 +53,7 @@ class UDPEndpoint(NetworkEndpoint):
         self.socket.bind(self.localAddr)
 
         if self.threaded:
+            Log.network("Creating heartbeat thread")
             self.heartbeatThread = HeartbeatThread(self)
             self.heartbeatThread.start()
         else:
@@ -73,7 +80,7 @@ class UDPEndpoint(NetworkEndpoint):
         # Verify we're still talking to the same server
         if self.heartbeatID and self.lastReceivedHeartbeatID != self.heartbeatID:
             self.connectionStatus = NetworkEndpoint.PIPE_DISCONNECTED
-            Log.network(
+            Log.info(
                     "Last heartbeat ID: %s. New heartbeat ID: %s" % (self.lastReceivedHeartbeatID, self.heartbeatID))
 
         self.heartbeatID = self.lastReceivedHeartbeatID
@@ -94,6 +101,8 @@ class UDPEndpoint(NetworkEndpoint):
             self.lastPeerHeartbeatTime = NetworkEndpoint.current_milli_time()
             self.lastReceivedHeartbeatID = event.msg
             self.connectionStatus = NetworkEndpoint.PIPE_CONNECTED
+            Log.network("Received heartbeat id {0} at {1}. Delta is {2}".format(self.lastReceivedHeartbeatID, time.clock(), time.clock() * 1000 - self.lastheartbeattime))
+            self.lastheartbeattime = time.clock() * 1000
             return
         NetworkEndpoint.event(self, event)
 
