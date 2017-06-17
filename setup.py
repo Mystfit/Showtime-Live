@@ -21,9 +21,7 @@ setup(name='Showtime-Live',
       url='http://github.com/Mystfit/Showtime-Live',
       scripts=['scripts/ShowtimeLiveServer.py'],
       license='MIT',
-      install_requires=["Showtime-Python", "rtmidi_python", "zeroconf"],
+      install_requires=["Showtime-Python", "rtmidi", "zeroconf"],
       packages=find_packages(),
       **platform_options
       )
-
-# install_midi_remote_scripts()

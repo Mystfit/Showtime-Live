@@ -1,4 +1,4 @@
-import rtmidi_python as rtmidi
+import rtmidi
 import threading
 import time
 import platform
@@ -27,7 +27,7 @@ class Clock(threading.Thread):
             self.clockVal += 1
             self.clockVal %= 127
             if self.midi_active:
-                self.midi_out.send_message([0xB0, 119, self.clockVal])
+                self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(1, 119, self.clockVal))
             time.sleep(self.rate)
 
 
@@ -57,7 +57,7 @@ class MidiRouter:
     def set_midi_active(self, state):
         self.midi_active = state
         if hasattr(self, "clock"):
-            print "Clock found!"
+            print("Clock found!")
             self.clock.midi_active = state
 
     def is_midi_active(self):
@@ -65,29 +65,34 @@ class MidiRouter:
 
     def create_midi(self, midiportindex):
         # Midi startup. Try creating a virtual port. Doesn't work on Windows
-        midi_out = rtmidi.MidiOut()
+        midi_out = rtmidi.RtMidiOut()
 
-        if midiportindex:
-            if platform.system() == "Windows":
-                if len(midi_out.ports) > 1:
-                    print "Can't open virtual midi port on windows. Using midi loopback instead."
-                    midi_out.open_port(midiportindex)
-                    self.set_midi_active(True)
-                else:
-                    return None
-            else:
-                midi_out.open_virtual_port("LiveShowtime_Midi")
+        if platform.system() == "Windows":
+            if len(midi_out.ports) > 1:
+                print("Can't open virtual midi port on windows. Using midi loopback instead.")
+                midi_out.openPort(midiportindex)
                 self.set_midi_active(True)
+            else:
+                return None
+        else:
+            midi_out.openVirtualPort("LiveShowtime_Midi")
+            print("Creating virtual midi port")
+            self.set_midi_active(True)
         return midi_out
 
     def list_midi_ports(self):
         print("Available MidiOut ports:")
-        for portindex, port in enumerate(self.midi_out.ports):
-            print str(portindex) + ": " + str(port)
+
+        ports = range(self.midi_out.getPortCount())
+        if ports:
+            for i in ports:
+                print("{0}:{1}".format(i, self.midi_out.getPortName(i)))
+        else:
+            print("No midi out ports available")
 
     def close(self):
         self.clock.stop()
-        self.midi_out.close_port()
+        self.midi_out.closePort()
 
     def play_midi_note(self, message):
         trigger = MidiRouter.NOTE_ON
