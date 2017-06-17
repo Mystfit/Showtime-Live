@@ -4,14 +4,15 @@
 #     pass
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "ext_libs", "showtime"))
+
 
 
 def create_instance(c_instance):
     try:
         from ShowtimeBridge import ShowtimeBridge
         return ShowtimeBridge(c_instance)
-    except Exception, err:
+    except Exception as err:
         from _Framework.ControlSurface import ControlSurface
         bootstrap = ControlSurface(c_instance)
         bootstrap.log_message("Couldn't build Showtime. Falling back to generic ControlSurface for logging")
@@ -24,7 +25,7 @@ def create_instance(c_instance):
 
         try:
             from ShowtimeBridge import ShowtimeBridge
-        except ImportError, e:
+        except ImportError as e:
             bootstrap.log_message("-----------------------")
             bootstrap.log_message("ShowtimeBridge failed to compile")
             bootstrap.log_message(e)

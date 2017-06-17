@@ -1,0 +1,7 @@
+setup.py
+showtime.py
+/Users/mystfit/Code/showtime/Showtime-Cpp/build/src/bindings/python/showtime.i
+showtime.egg-info/PKG-INFO
+showtime.egg-info/SOURCES.txt
+showtime.egg-info/dependency_links.txt
+showtime.egg-info/top_level.txt

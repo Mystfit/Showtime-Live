@@ -9,6 +9,9 @@ from LiveWrappers.LiveSong import LiveSong
 from LiveNetworkEndpoint import LiveNetworkEndpoint
 from Logger import Log
 
+import random
+import showtime
+
 
 class ShowtimeBridge(ControlSurface):
     def __init__(self, c_instance):
@@ -20,11 +23,13 @@ class ShowtimeBridge(ControlSurface):
 
             Log.set_logger(self.log_message)
             Log.set_log_level(Log.LOG_WARN)
-            Log.set_log_network(True)
+            Log.set_log_network(False)
             Log.write("-----------------------")
-            Log.write("ShowtimeBridge starting")
+            Log.write("Showtime-Live starting")
             Log.write("Python version " + sys.version)
             Log.info(sys.version)
+
+            self.test_native_showtime()
 
             # Network endpoint
             self.endpoint = LiveNetworkEndpoint()
@@ -37,10 +42,12 @@ class ShowtimeBridge(ControlSurface):
             self.refresh_state()
             self._suppress_send_midi = False
 
+
     def disconnect(self):
         self._suppress_send_midi = True
         self._suppress_send_midi = False
         self.endpoint.close()
+        self.test_native_showtime_cleanup()
         ControlSurface.disconnect(self)
 
     def refresh_state(self):
@@ -70,3 +77,30 @@ class ShowtimeBridge(ControlSurface):
         if len(LiveSong.instances()) > 0:
             LiveSong.instances()[0].tick()
         LiveWrapper.process_deferred_actions()
+
+        self.test_native_showtime_event_loop()
+
+    def test_native_showtime(self):
+        # Native showtime test
+        Log.write("Starting native showtime library")
+        showtime.Showtime_init()
+        showtime.Showtime_join("127.0.0.1")
+        self.perf = showtime.Showtime_create_performer("ableton_perf")
+        self.local_uri_out = showtime.ZstURI_create("ableton_perf", "ins", "plug_out", showtime.ZstURI.OUT_JACK)
+        self.plug_out = showtime.Showtime_create_int_plug(self.local_uri_out)
+        self.fire_count = 0
+
+    def test_native_showtime_event_loop(self):
+        if(random.randint(0, 2) == 1):
+            self.plug_out.fire(self.fire_count)
+            self.fire_count += 1
+
+        while(showtime.Showtime_plug_event_queue_size() > 0):
+            event = showtime.Showtime_pop_plug_event()
+            Log.write("Received Showtime plug event: " + str(showtime.convert_to_int_plug(event.plug()).get_value()))
+
+    def test_native_showtime_cleanup(self):
+        showtime.Showtime_destroy_performer(self.perf)
+        showtime.Showtime_destroy_plug(self.plug_out)
+        showtime.Showtime_destroy_plug(self.plug_in)
+        showtime.Showtime_destroy()
