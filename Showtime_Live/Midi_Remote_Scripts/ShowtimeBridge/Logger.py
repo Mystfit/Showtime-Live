@@ -1,4 +1,7 @@
-import Utils
+try:
+    import Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Utils as Utils
+except ImportError:
+    import Utils
 
 
 class Log:

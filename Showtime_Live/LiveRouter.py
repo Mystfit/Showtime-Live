@@ -1,4 +1,8 @@
-import Queue
+try:
+    import queue as Queue
+except ImportError:
+    import Queue
+
 import select
 import socket
 import threading
@@ -8,8 +12,10 @@ from Showtime.zst_stage import ZstStage
 from ShowtimeBridge.NetworkEndpoint import SimpleMessage, NetworkPrefixes, NetworkEndpoint, NetworkErrors, ReadError
 from ShowtimeBridge.UDPEndpoint import UDPEndpoint
 from ShowtimeBridge.TCPEndpoint import TCPEndpoint
-from ShowtimeBridge.Logger import Log
-
+try:
+    from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Logger import Log
+except ImportError:
+    from Logger import Log
 
 class RegistrationThread(threading.Thread):
     """Thread dedicated to incoming registration requests so we don't break Showtime req/rep timing"""
@@ -85,7 +91,7 @@ class LiveRouter(threading.Thread):
             try:
                 inputready, outputready, exceptready = select.select(self.inputSockets.keys(),
                                                                      self.outputSockets.keys(), [], 1)
-            except socket.error, e:
+            except socket.error as e:
                 if e[0] == NetworkErrors.EBADF:
                     Log.error("Bad file descriptor! Probably a dead socket passed to select")
                     Log.debug(self.inputSockets.keys())
@@ -113,7 +119,7 @@ class LiveRouter(threading.Thread):
                     except ReadError:
                         pass
                         # Log.network("Read failed. UDP probably closed. %s" % e)
-                    except RuntimeError, e:
+                    except RuntimeError as e:
                         Log.network("Receive failed. Reason: %s" % e)
                 else:
                     endpoint = self.inputSockets[s]
@@ -198,7 +204,7 @@ class LiveRouter(threading.Thread):
             if methodname in self.node.methods:
                 self.node.update_local_method_by_name(methodname, event.msg)
             else:
-                print "Outgoing method not registered!"
+                print("Outgoing method not registered!")
 
     def incoming(self, message):
         Log.info("ST-->Live: " + str(message.name))

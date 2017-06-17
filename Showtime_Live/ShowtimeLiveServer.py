@@ -1,12 +1,23 @@
 #!python
-import Queue
+try:
+    import queue as Queue
+except ImportError:
+    import Queue
 import glob
 import os
 import platform
 import time
-import tkFileDialog
-import tkSimpleDialog
-from Tkinter import *
+
+try: 
+    # Python 3
+    from tkinter import filedialog
+    from tkinter import simpledialog
+    from tkinter import *
+except ImportError:
+    # Python 2
+    import tkFileDialog as filedialog
+    import tkSimpleDialog as simpledialog
+    from Tkinter import *
 from optparse import OptionParser
 from shutil import copytree, rmtree, ignore_patterns
 
@@ -184,9 +195,9 @@ class Display(Frame):
         self.after(50, self.write_log)
 
 
-class LiveScriptInstallDialog(tkSimpleDialog.Dialog):
+class LiveScriptInstallDialog(simpledialog.Dialog):
     def __init__(self, parent):
-        tkSimpleDialog.Dialog.__init__(self, parent)
+        simpledialog.Dialog.__init__(self, parent)
         self.entry = None
         self.browseBtn = None
 
@@ -327,24 +338,12 @@ class ShowtimeLiveServer:
             self.showtimeRouter.start()
             print("Server running!")
             print("-------------------------------------\n")
-        except zmq.error.ZMQError, e:
+        except zmq.error.ZMQError as e:
             if str(e) == "Address in use":
                 Log.error("Could not create Showtime node. Address already in use.\n")
                 Log.error("Close any ShowtimeLive servers on this machine and try re-launching the server.")
-        except Exception, e:
+        except Exception as e:
             Log.error("Could not start LiveRouter. General Error: %s" % e)
-
-        if self.midiRouter.is_midi_active():
-            self.showtimeRouter.node.request_register_method(
-                    "play_note",
-                    ZstMethod.WRITE,
-                    {
-                        "trackindex": None,
-                        "note": None,
-                        "state": None,
-                        "velocity": None
-                    },
-                    self.midiRouter.play_midi_note)
 
         if not options.useCLI:
             gui.update()
@@ -359,7 +358,7 @@ class ShowtimeLiveServer:
                 gui.mainloop()
 
         except KeyboardInterrupt:
-            print "\nExiting..."
+            print("\nExiting...")
             if self.showtimeRouter:
                 self.showtimeRouter.stop()
             self.midiRouter.close()
