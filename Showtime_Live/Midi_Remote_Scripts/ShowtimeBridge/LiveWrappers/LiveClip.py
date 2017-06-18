@@ -22,6 +22,9 @@ class LiveClip(LiveWrapper):
     def create_handle_id(self):
         return "%scl%s" % (self.parent().id(), self.handleindex)
 
+    def create_plugs(self):
+        pass
+
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
         if self.handle():

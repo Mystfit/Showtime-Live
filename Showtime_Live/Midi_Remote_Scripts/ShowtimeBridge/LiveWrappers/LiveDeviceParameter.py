@@ -1,6 +1,9 @@
 from LiveWrapper import *
 from ..Utils import Utils
 
+from ..Logger import Log
+import showtime
+
 
 class LiveDeviceParameter(LiveWrapper):
     # Message types
@@ -15,8 +18,26 @@ class LiveDeviceParameter(LiveWrapper):
     # -------------------
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
+        Log.warn("Creating native Showtime plug")
+
         if self.handle():
             self.handle().add_value_listener(self.value_updated)
+
+    def create_plugs(self):
+        if not self.showtime_instrument:
+            Log.warn("No showtime_instrument string set. Value is {0}".format(self.showtime_instrument))
+            return
+
+        uri_out = showtime.ZstURI.create("ableton_perf", str(self.showtime_instrument), "out", showtime.ZstURI.OUT_JACK)
+        uri_in = showtime.ZstURI.create("ableton_perf", str(self.showtime_instrument), "in", showtime.ZstURI.IN_JACK)
+
+        try:
+            self.value_plug_out = showtime.Showtime_create_int_plug(uri_out)
+            self.value_plug_in = showtime.Showtime_create_int_plug(uri_in)
+            LiveWrapper.add_plug_uri(uri_out, self)
+            LiveWrapper.add_plug_uri(uri_in, self)
+        except Exception as e:
+            Log.error("Failed to register plug. Exception was {0}".format(e))
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
@@ -26,6 +47,22 @@ class LiveDeviceParameter(LiveWrapper):
             except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove deviceparameter listener")
 
+            try:
+                LiveWrapper.remove_plug_uri(self.value_plug_out.get_URI())
+                LiveWrapper.remove_plug_uri(self.value_plug_in.get_URI())
+            except:
+                Log.error("Failed to remote plug uris")
+            showtime.Showtime_destroy_plug(self.value_plug_out)
+            showtime.Showtime_destroy_plug(self.value_plug_in)
+
+    def handle_incoming_plug_event(self, event):
+        Log.info("LIVE: Plug received message")
+        if event.plug().get_URI() == self.value_plug_in.get_URI():
+            self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(self.value_plug_in.get_value())/127.0)
+            Log.info("Val:%s on %s" % (self.handle().value, self.id()))
+        else:
+            Log.warn("No registered input plug matches incoming plug event from {0}".format(plug.to_char()))
+
     @classmethod
     def register_methods(cls):
         cls.add_outgoing_method(LiveDeviceParameter.PARAM_UPDATED)
@@ -33,12 +70,12 @@ class LiveDeviceParameter(LiveWrapper):
             LiveDeviceParameter.PARAM_SET, ["id", "value"],
             LiveDeviceParameter.queue_param_value)
 
-    def to_object(self):    
+    def to_object(self):
         params = {
             "value": self.handle().value,
             "min": self.handle().min,
             "max": self.handle().max,
-        }   
+        }
         return LiveWrapper.to_object(self, params)
 
     # --------
@@ -61,3 +98,5 @@ class LiveDeviceParameter(LiveWrapper):
     # --------
     def value_updated(self):
         self.update(LiveDeviceParameter.PARAM_UPDATED, self.handle().value)
+        Log.info("Sending on native plug: {0}".format(self.handle().value))
+        self.value_plug_out.fire(int(self.handle().value))

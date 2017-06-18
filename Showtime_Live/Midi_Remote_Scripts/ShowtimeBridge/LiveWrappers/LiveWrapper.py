@@ -23,6 +23,7 @@ class LiveWrapper(object):
 
     # References to all instances created of this object
     _instances = {}
+    _plugs = {}
 
     # Publisher for all wrappers
     _endpoint = None
@@ -46,8 +47,12 @@ class LiveWrapper(object):
         self.handleindex = handleindex
 
         self._id = self.create_handle_id()
+        
+        self.create_showtime_instrument_str()
+
         self.update_hierarchy()
         self.create_listeners()
+        self.create_plugs()
 
     # Cleanup
     # -------
@@ -87,6 +92,61 @@ class LiveWrapper(object):
             except (RuntimeError, AttributeError):
                 pass
 
+
+    # Showtime-native interface
+    # -------------------------
+    def create_showtime_instrument_str(self):
+        self.showtime_instrument = ""
+
+        # Build showtime instrument string for plugs
+        try:
+            if self.parent():
+                if hasattr(self.parent().handle(), "name"):
+                    if self.parent().showtime_instrument:
+                        self.showtime_instrument = self.parent().showtime_instrument + "/" + self.handle().name
+                    else:
+                        self.showtime_instrument = self.parent().handle().name + "/" + self.handle().name
+                else:
+                    self.showtime_instrument = self.parent.id()
+            elif hasattr(self.handle(), "name"):
+                self.showtime_instrument = self.handle().name
+            else:
+                self.showtime_instrument = str(self.id())
+        except Exception as e:
+            Log.error("Failed to build showtime instrument string. " + str(e))
+
+    def handle_incoming_plug_event(self, event):
+        pass
+
+    def update_hierarchy(self, cls=None, livevector=None):
+        """Refreshes the hierarchy of wrappers underneath this wrapper"""
+        if cls is not None and livevector is not None:
+            parentId = self.parent().id() if self.parent() else None
+            cls.remove_child_wrappers(livevector, self.id())
+            cls.create_child_wrappers(self, livevector)
+
+    @staticmethod
+    def add_plug_uri(uri, wrapper):
+        LiveWrapper._plugs[uri.to_char()] = wrapper
+        Log.info("Plugs dictionary is now {0}".format(LiveWrapper._plugs))
+
+    @staticmethod
+    def remove_plug_uri(uri, wrapper):
+        LiveWrapper._plugs.pop(uri.to_char(), None)
+        Log.info("Plugs dictionary is now {0}".format(LiveWrapper._plugs))
+
+    @staticmethod
+    def find_wrapper_from_uri(uri):
+        try:
+            return LiveWrapper._plugs[uri.to_char()]
+        except KeyError:
+            Log.error("Couldn't find wrapper for uri {0}".format(uri.to_char()))
+        return None
+
+    def create_plugs(self):
+        pass
+
+
     # Hierarchy
     # ---------
     def handle(self):
@@ -96,13 +156,6 @@ class LiveWrapper(object):
     def parent(self):
         """Get the parent wrapper of this wrapper"""
         return self._parent
-
-    def update_hierarchy(self, cls=None, livevector=None):
-        """Refreshes the hierarchy of wrappers underneath this wrapper"""
-        if cls is not None and livevector is not None:
-            parentId = self.parent().id() if self.parent() else None
-            cls.remove_child_wrappers(livevector, self.id())
-            cls.create_child_wrappers(self, livevector)
 
     @classmethod
     def create_child_wrappers(cls, parent, livevector):
@@ -240,7 +293,8 @@ class LiveWrapper(object):
     @staticmethod
     def set_endpoint(endpoint):
         """Set the global publisher for all wrappers"""
-        LiveWrapper._endpoint = endpoint
+        #LiveWrapper._endpoint = endpoint
+        pass
 
     @staticmethod
     def register_methods():
@@ -279,12 +333,12 @@ class LiveWrapper(object):
     def update(self, action, values=None):
         """Send the updated wrapper value to the network"""
         val = {"value": values, "id": self.id()}
-        LiveWrapper._endpoint.send_to_showtime(action, val)
+        #LiveWrapper._endpoint.send_to_showtime(action, val)
 
     def respond(self, action, values):
         """Send the updated wrapper value to the network"""
         val = {"value": values, "id": self.id()}
-        LiveWrapper._endpoint.send_to_showtime(action, val, True)
+        #LiveWrapper._endpoint.send_to_showtime(action, val, True)
 
     # ID methods
     # ----------
@@ -381,7 +435,7 @@ class LiveWrapper(object):
     @staticmethod
     def send_layout_diff(args):
         """Sends accumulated layout diff to server"""
-        LiveWrapper._endpoint.send_to_showtime(LiveWrapper.LAYOUT_UPDATED, {"val": LiveWrapper._layout_updates}, True)
+        #LiveWrapper._endpoint.send_to_showtime(LiveWrapper.LAYOUT_UPDATED, {"val": LiveWrapper._layout_updates}, True)
         LiveWrapper._layout_updates[:] = []
 
 
