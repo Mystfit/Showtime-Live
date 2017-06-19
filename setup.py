@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
-import os, platform
+import glob
+import os
+import platform
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()

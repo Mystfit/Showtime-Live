@@ -1,12 +1,9 @@
 #!python
-try:
-    import queue as Queue
-except ImportError:
-    import Queue
 import glob
 import os
 import platform
 import time
+from MidiScreamer import MidiScreamer
 
 try: 
     # Python 3
@@ -20,14 +17,6 @@ except ImportError:
     from Tkinter import *
 from optparse import OptionParser
 from shutil import copytree, rmtree, ignore_patterns
-
-import zmq
-from Showtime.zst_method import ZstMethod
-
-from Showtime_Live.LiveRouter import LiveRouter
-from Showtime_Live.MidiRouter import MidiRouter
-from Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Logger import Log
-
 
 # MIDI Remote Script installation
 # -------------------------------
@@ -45,7 +34,7 @@ def find_ableton_dirs():
 
 
 def install_midi_remote_scripts(custom_install_path=None):
-    scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Midi_Remote_Scripts", "ShowtimeBridge")
+    scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "MidiRemoteScripts")
 
     liveinstallations = []
     if custom_install_path:
@@ -55,7 +44,8 @@ def install_midi_remote_scripts(custom_install_path=None):
 
     for path in liveinstallations:
         installpath = os.path.join(path, "MIDI Remote Scripts", "ShowtimeBridge")
-
+        print(scriptspath)
+        print(installpath)
         try:
             rmtree(installpath)
         except OSError:
@@ -71,8 +61,7 @@ class Display(Frame):
     def __init__(self, parent=0):
         Frame.__init__(self, parent)
 
-        self.showtimeRouter = None
-        self.midiRouter = None
+        self.midiScreamer = None
 
         parent.minsize(width=800, height=600)
         parent.title("Showtime-Live Server")
@@ -83,12 +72,6 @@ class Display(Frame):
         self.rowconfigure(3, weight=1)
         self.rowconfigure(5, pad=7)
 
-        # Connection status
-        self.connectionStatusLabel = StringVar(self)
-        self.connectionStatusLabel.set("Disconnected")
-        Label(self, text="Live status:").grid(row=0, column=0, sticky=E, padx=2, pady=4)
-        Label(self, text="", textvariable=self.connectionStatusLabel).grid(row=0, column=1, sticky=W, padx=2, pady=4)
-
         # Install script buttons
         self.installScriptsBtn = Button(self, text="Install Live scripts", command=install_midi_remote_scripts)
         self.installScriptsBtn.grid(row=1, column=0, sticky=(N, E, W), padx=2, pady=2)
@@ -97,59 +80,18 @@ class Display(Frame):
                                                   command=self.open_custom_install_dialog)
         self.customPathInstallScriptsBtn.grid(row=2, column=0, sticky=(N, E, W), padx=2, pady=2)
 
-        # Server log
-        self.consoleLabel = Label(self, text="Server Log")
-        self.consoleLabel.grid(row=4, column=0, sticky=W, padx=2, pady=2)
-        self.output = Text(self)
-        self.output.grid(row=5, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
-        sys.stdout = self
-        self.consoleQueue = Queue.Queue()
-
-        scrollbar = Scrollbar(self)
-        scrollbar.grid(row=5, column=1, rowspan=5, sticky=(N, E, S), pady=2)
-        self.output.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self.output.yview)
-
-        # Logging buttons
-        self.logNetworkVar = IntVar(self)
-        self.logNetworkVar.set(Log.useNetworkLogging == 1)
-        self.logNetworkVar.trace('w', self.lognetwork_changed)
-        self.logNetworkButton = Checkbutton(self, text="Log network connections", variable=self.logNetworkVar)
-        self.logNetworkButton.grid(row=10, column=0, sticky=(S, W), padx=2, pady=2)
-
-        self.logShowtimeVar = IntVar(self)
-        self.logShowtimeVar.set(1)
-        self.logShowtimeVar.trace('w', self.logshowtime_changed)
-        self.logShowtimeButton = Checkbutton(self, text="Log Showtime messages", variable=self.logShowtimeVar)
-        self.logShowtimeButton.config(state="disabled")
-        self.logShowtimeButton.grid(row=11, column=0, sticky=(S, W), padx=2, pady=2)
-
-        Label(self, text="Logging level").grid(row=12, column=0, sticky=(S, W), padx=2, pady=2)
-        self.logTypeVar = StringVar(self)
-        self.logTypeVar.set(Log.titles[Log.level])
-        self.logTypeVar.trace('w', self.logtype_changed)
-        self.logLevelOptions = OptionMenu(self, self.logTypeVar,
-                                          Log.titles[Log.LOG_INFO],
-                                          Log.titles[Log.LOG_WARN],
-                                          Log.titles[Log.LOG_ERRORS])
-        self.logLevelOptions.grid(row=13, column=0, sticky=(S, E, W), padx=2, pady=2)
-
         # Midi UI
         self.midiPortVar = None
         self.midiPortOptions = None
 
-    def set_showtime_router(self, showtimerouter):
-        self.showtimeRouter = showtimerouter
-        self.showtimeRouter.clientConnectedCallback = self.connectionstatus_changed
-
-    def create_midi_loopback_options(self, midirouter):
-        self.midiRouter = midirouter
+    def create_midi_loopback_options(self, midiscreamer):
+        self.midiScreamer = midiscreamer
 
         Label(self, text="MIDI Loopback Port").grid(row=3, column=0, sticky=(N, E), padx=2, pady=2)
         self.midiPortVar = StringVar(self)
         self.midiPortVar.trace('w', self.midiport_changed)
 
-        ports = self.midiRouter.midi_out.ports
+        ports = self.midiScreamer.midi_out.ports
         loopmidiports = [port for port in ports if "loopmidi" in port.lower()]
         if len(loopmidiports) > 0:
             self.midiPortVar.set(loopmidiports[0])
@@ -157,42 +99,16 @@ class Display(Frame):
         self.midiPortOptions = OptionMenu(self, self.midiPortVar, *ports)
         self.midiPortOptions.grid(row=3, column=1, sticky=(N, W), padx=2, pady=2)
 
-    def connectionstatus_changed(self, *args):
-        text = "Connected" if self.showtimeRouter.clientConnected else "Disconnected"
-        print("\nAbleton Live connection status: %s\n\n" % text)
-        self.connectionStatusLabel.set(text)
-
     def midiport_changed(self, *args):
-        if hasattr(self, "midiRouter"):
-            ports = self.midiRouter.midi_out.ports
+        if hasattr(self, "midiScreamer"):
+            ports = self.midiScreamer.midi_out.ports
             if len(ports) > 0:
                 portindex = int(ports.index(self.midiPortVar.get()))
-                self.midiRouter.close()
-                self.midiRouter = MidiRouter(portindex)
-
-    def logtype_changed(self, *args):
-        Log.set_log_level(Log.log_level_from_name(self.logTypeVar.get()))
-
-    def lognetwork_changed(self, *args):
-        Log.set_log_network(self.logNetworkVar.get() == 1)
-
-    def logshowtime_changed(self, *args):
-        pass
+                self.midiScreamer.close()
+                self.midiScreamer = MidiScreamer(portindex)
 
     def open_custom_install_dialog(self):
         LiveScriptInstallDialog(self)
-
-    def write(self, txt):
-        self.consoleQueue.put(txt)
-
-    def write_log(self):
-        while self.consoleQueue.qsize():
-            try:
-                self.output.insert(END, str(self.consoleQueue.get(0)))
-                self.output.see(END)
-            except Queue.Empty:
-                pass
-        self.after(50, self.write_log)
 
 
 class LiveScriptInstallDialog(simpledialog.Dialog):
@@ -248,10 +164,6 @@ class ShowtimeLiveServer:
         parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False)
         parser.add_option("-c", "--cli", action="store_true", dest="useCLI",
                           help="Run server in Command Line Interface mode.", default=False)
-        parser.add_option("-s", "--stagehost", action="store", dest="stageaddress", type="string",
-                          help="IP address of the Showtime stage.", default=None)
-        parser.add_option("-p", "--stageport", action="store", dest="stageport", type="string",
-                          help="Port of the Showtime stage", default="6000")
         parser.add_option("-m", "--midiportindex", action="store", dest="midiportindex", type="int",
                           help="Midi loopback port to use. Windows only, make sure loopMidi is running first!",
                           default=None)
@@ -265,19 +177,11 @@ class ShowtimeLiveServer:
 
         (options, args) = parser.parse_args()
 
-        # Logging options
-        if options.verbose:
-            Log.set_log_level(Log.LOG_INFO)
-        else:
-            Log.set_log_level(Log.LOG_WARN)
-        Log.set_log_network(True)
-
         # Create GUI
         gui = None
         if not options.useCLI:
             root = Tk()
             gui = Display(root)
-            Log.set_logger(gui.write)
 
         # Check if midi remote scripts are installed correctly
         installed_midi_remote_scripts = find_ableton_dirs()
@@ -307,46 +211,21 @@ class ShowtimeLiveServer:
         # Set up MIDI router
         print("\n-------------------------------------")
         print("Starting MIDI clock")
-        self.midiRouter = MidiRouter(options.midiportindex)
+        self.midiScreamer = MidiScreamer(options.midiportindex)
 
         if platform.system() == "Windows":
-            gui.create_midi_loopback_options(self.midiRouter)
+            gui.create_midi_loopback_options(self.midiScreamer)
 
         if options.listmidiports:
-            midirouter = MidiRouter(None)
+            midiscreamer = MidiScreamer(None)
             print("\n-------------------------------------")
             print("Available MIDI ports:")
-            midirouter.list_midi_ports()
+            midiscreamer.list_midi_ports()
             sys.exit(0)
 
         if not options.useCLI:
             gui.update()
 
-        # Set up network router
-        print("\n-------------------------------------")
-        print("Starting Showtime-Live Server")
-        stageaddress = options.stageaddress
-        if stageaddress:
-            stageaddress += ":" + str(options.stageport)
-
-        self.showtimeRouter = None
-        try:
-            self.showtimeRouter = LiveRouter(stageaddress)
-            if not options.useCLI:
-                gui.set_showtime_router(self.showtimeRouter)
-
-            self.showtimeRouter.start()
-            print("Server running!")
-            print("-------------------------------------\n")
-        except zmq.error.ZMQError as e:
-            if str(e) == "Address in use":
-                Log.error("Could not create Showtime node. Address already in use.\n")
-                Log.error("Close any ShowtimeLive servers on this machine and try re-launching the server.")
-        except Exception as e:
-            Log.error("Could not start LiveRouter. General Error: %s" % e)
-
-        if not options.useCLI:
-            gui.update()
 
         # Enter into the idle loop to handle messages
         try:
@@ -354,14 +233,11 @@ class ShowtimeLiveServer:
                 while 1:
                     time.sleep(1)
             else:
-                gui.after(50, gui.write_log)
                 gui.mainloop()
 
         except KeyboardInterrupt:
             print("\nExiting...")
-            if self.showtimeRouter:
-                self.showtimeRouter.stop()
-            self.midiRouter.close()
+            self.midiScreamer.close()
 
 
 def main():
