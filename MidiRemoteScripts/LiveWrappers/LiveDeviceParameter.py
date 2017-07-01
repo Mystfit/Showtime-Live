@@ -55,11 +55,11 @@ class LiveDeviceParameter(LiveWrapper):
 
     def handle_incoming_plug_event(self, event):
         Log.info("LIVE: Plug received message")
-        if event.plug().get_URI() == self.value_plug_in.get_URI():
+        if event.get_first() == self.value_plug_in.get_URI():
             self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(self.value_plug_in.get_value())/127.0)
             Log.info("Val:%s on %s" % (self.handle().value, self.id()))
         else:
-            Log.warn("No registered input plug matches incoming plug event from {0}".format(plug.to_char()))
+            Log.warn("No registered input plug matches incoming plug event from {0}".format(event.get_first().to_char()))
 
     # --------
     # Incoming

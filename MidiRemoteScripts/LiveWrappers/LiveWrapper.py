@@ -303,7 +303,7 @@ class LiveWrapper(object):
             handleId = LiveWrapper.generate_id()
             handleName = LiveWrapper.generate_id_name_str(handleName, handleId)
             Log.warn("!!!TODO: Send name change to Showtime stage!!!")
-            # self.defer_action(self.set_handle_name, handleName)
+            self.set_handle_name(handleName)
         return handleId
 
     @staticmethod

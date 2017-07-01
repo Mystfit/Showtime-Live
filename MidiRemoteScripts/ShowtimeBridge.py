@@ -21,7 +21,7 @@ class ShowtimeBridge(ControlSurface):
             self._suppress_send_midi = True
 
             Log.set_logger(self.log_message)
-            Log.set_log_level(Log.LOG_WARN)
+            Log.set_log_level(Log.LOG_INFO)
             Log.set_log_network(False)
             Log.write("-----------------------")
             Log.write("Showtime-Live starting")
@@ -76,12 +76,13 @@ class ShowtimeBridge(ControlSurface):
 
     def request_loop(self):
         # Handle incoming Showtime events
-        while(showtime.Showtime_plug_event_queue_size() > 0):
-            event = showtime.Showtime_pop_plug_event()
-            wrapper = LiveWrapper.find_wrapper_from_uri(event.plug().get_URI())
-            Log.write("Event URI: {0}, Wrapper: {1}".format(event.plug().get_URI().to_char(), wrapper.value_plug_in.get_URI().to_char()))
-            if wrapper:
-                wrapper.handle_incoming_plug_event(event)
+        while(showtime.Showtime_event_queue_size() > 0):
+            event = showtime.Showtime_pop_event()
+            if event.get_update_type() == showtime.ZstEvent.PLUG_HIT:
+                wrapper = LiveWrapper.find_wrapper_from_uri(event.get_first())
+                Log.write("Event URI: {0}, Wrapper: {1}".format(event.get_first().to_char(), wrapper.value_plug_in.get_URI().to_char()))
+                if wrapper:
+                    wrapper.handle_incoming_plug_event(event)
 
         # Tick the song forwards one step
         if len(LiveSong.instances()) > 0:

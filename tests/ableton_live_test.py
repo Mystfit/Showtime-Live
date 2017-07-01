@@ -13,10 +13,11 @@ class Watcher(threading.Thread):
 
     def run(self):
         while True:
-            event = showtime.Showtime_pop_plug_event()
-            print("EVENT")
-            if event.event() == showtime.PlugEvent.HIT:
-                print("Received plug hit: {0}".format(showtime.convert_to_int_plug(event.plug()).get_value()))
+            showtime.Showtime_poll_once()
+            # event = showtime.Showtime_pop_event()
+            # print("EVENT")
+            # if event.event() == showtime.PlugEvent.HIT:
+            #     print("Received plug hit: {0}".format(showtime.convert_to_int_plug(event.plug()).get_value()))
 
 watch = Watcher()
 watch.start()
@@ -45,7 +46,7 @@ live_plug_in = "in"  # input("Name of input Live plug > ")
 local_plug_out = showtime.ZstURI_create("python_perf", "ins", "out", showtime.ZstURI.OUT_JACK)
 plug_out = showtime.Showtime_create_int_plug(local_plug_out)
 live_uri_in = showtime.ZstURI_create(live_performer, live_instrument_in, live_plug_in, showtime.ZstURI.IN_JACK)
-showtime.Showtime_connect_plugs(local_plug_out, live_uri_in)
+showtime.Showtime_connect_cable(local_plug_out, live_uri_in)
 
 val = 0
 try:
