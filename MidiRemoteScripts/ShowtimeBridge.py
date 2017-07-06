@@ -13,6 +13,7 @@ import random
 import showtime
 
 
+
 class ShowtimeBridge(ControlSurface):
     def __init__(self, c_instance):
         ControlSurface.__init__(self, c_instance)
@@ -27,6 +28,8 @@ class ShowtimeBridge(ControlSurface):
             Log.write("Showtime-Live starting")
             Log.write("Python version " + sys.version)
             Log.info(sys.version)
+            import imp
+            Log.info(dir(imp))
 
             self.init_showtime("ableton_perf")
             LiveSong.add_instance(LiveSong(LiveUtils.getSong()))
