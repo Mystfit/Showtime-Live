@@ -89,31 +89,12 @@ class LiveWrapper(object):
         except Exception as e:
             Log.error("Failed to build showtime instrument string. " + str(e))
 
-    def handle_incoming_plug_event(self, event):
-        pass
-
     def update_hierarchy(self, cls=None, livevector=None):
         """Refreshes the hierarchy of wrappers underneath this wrapper"""
         if cls is not None and livevector is not None:
             parentId = self.parent().id() if self.parent() else None
             cls.remove_child_wrappers(livevector, self.id())
             cls.create_child_wrappers(self, livevector)
-
-    @staticmethod
-    def add_plug_uri(uri, wrapper):
-        LiveWrapper._plugs[uri.to_char()] = wrapper
-
-    @staticmethod
-    def remove_plug_uri(uri, wrapper):
-        LiveWrapper._plugs.pop(uri.to_char(), None)
-
-    @staticmethod
-    def find_wrapper_from_uri(uri):
-        try:
-            return LiveWrapper._plugs[uri.to_char()]
-        except KeyError:
-            Log.error("Couldn't find wrapper for uri {0}".format(uri.to_char()))
-        return None
 
     def create_plugs(self):
         pass

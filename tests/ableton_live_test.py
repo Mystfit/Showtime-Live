@@ -1,10 +1,20 @@
 import time
-import showtime
 import threading
-try: 
-    input = raw_input
-except NameError: 
-    pass
+import showtime
+from showtime import Showtime as ZST
+from showtime import ZstEventCallback, ZstURI, ZstInputPlugEventCallback
+
+
+class PlugCallback(ZstInputPlugEventCallback):
+    def run(self, plug):
+        print("Plug received value {0}".format(plug.value().float_at(0)))
+
+
+class EventCallback(ZstEventCallback):
+    def run(self, event):
+        print("Received stage event {0} from {1}".format(
+            event.get_update_type(), event.get_first().to_char()))
+
 
 class Watcher(threading.Thread):
     def __init__(self):
@@ -13,50 +23,38 @@ class Watcher(threading.Thread):
 
     def run(self):
         while True:
-            showtime.Showtime_poll_once()
-            # event = showtime.Showtime_pop_event()
-            # print("EVENT")
-            # if event.event() == showtime.PlugEvent.HIT:
-            #     print("Received plug hit: {0}".format(showtime.convert_to_int_plug(event.plug()).get_value()))
+            if ZST.event_queue_size() > 0:
+                ZST.poll_once()
 
 watch = Watcher()
 watch.start()
 
-showtime.Showtime_init()
-showtime.Showtime_join("127.0.0.1")
-perf = showtime.Showtime_create_performer("python_perf")
+ZST.init()
 
-live_performer = input("Name of Live performer > ")
-# live_instrument = input("Name of output Live instrument > ")
-# live_plug = input("Name of output Live plug > ")
+stageCallback = EventCallback()
+ZST.attach_stage_event_callback(stageCallback)
+ZST.join("127.0.0.1")
+perf = ZST.create_performer("python_perf")
 
-# live_uri_out = showtime.ZstURI_create(live_performer, live_instrument, live_plug, showtime.ZstURI.OUT_JACK)
-# local_uri_in = showtime.ZstURI_create("python_perf", "ins", "plug_in", showtime.ZstURI.IN_JACK)
-# plug_in = showtime.Showtime_create_int_plug(local_uri_in)
+uri_out = ZstURI.create("ableton_perf", "B-B-Delay-{7}/Delay-{8}/Feedback", "out", ZstURI.OUT_JACK)
+uri_in = ZstURI.create("python_perf", "ins", "plug_in", ZstURI.IN_JACK)
 
-# showtime.Showtime_connect_plugs(local_uri_in, live_uri_out)
+plug_in = ZST.create_input_plug(uri_in, showtime.ZST_INT)
+ZST.connect_cable(uri_in, uri_out)
+time.sleep(0.2)
 
-# time.sleep(0.1)
+plug_callback = PlugCallback()
+plug_in.attach_recv_callback(plug_callback);
+time.sleep(0.2)
 
-# input("wait")
-
-live_instrument_in = "A-Reverb/Reverb/DecayTime"  # input("Name of input Live instrument > ")
-live_plug_in = "in"  # input("Name of input Live plug > ")
-
-local_plug_out = showtime.ZstURI_create("python_perf", "ins", "out", showtime.ZstURI.OUT_JACK)
-plug_out = showtime.Showtime_create_int_plug(local_plug_out)
-live_uri_in = showtime.ZstURI_create(live_performer, live_instrument_in, live_plug_in, showtime.ZstURI.IN_JACK)
-showtime.Showtime_connect_cable(local_plug_out, live_uri_in)
-
-val = 0
 try:
     while True:
-        time.sleep(0.001)
-        val += 1
-        val %= 127
-        plug_out.fire(val)
+        time.sleep(1)
 except KeyboardInterrupt:
-    print("Aborting...")
+    pass
 
 print("Done")
-showtime.Showtime_destroy();
+ZST.remove_stage_event_callback(stageCallback)
+plug_in.destroy_recv_callback(plug_callback)
+
+ZST.destroy()

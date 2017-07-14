@@ -10,8 +10,15 @@ from LiveWrappers.LiveSong import LiveSong
 from Logger import Log
 
 import random
-import showtime
 
+import showtime
+from showtime import Showtime as ZST
+from showtime import ZstEventCallback
+
+
+class Stage_Event(ZstEventCallback):
+    def run(self, e):
+        Log.info("Stage event {0}: {1}".format(e.get_update_type(), e.get_first().to_char()))
 
 
 class ShowtimeBridge(ControlSurface):
@@ -28,8 +35,6 @@ class ShowtimeBridge(ControlSurface):
             Log.write("Showtime-Live starting")
             Log.write("Python version " + sys.version)
             Log.info(sys.version)
-            import imp
-            Log.info(dir(imp))
 
             self.init_showtime("ableton_perf")
             LiveSong.add_instance(LiveSong(LiveUtils.getSong()))
@@ -42,12 +47,14 @@ class ShowtimeBridge(ControlSurface):
 
     def init_showtime(self, performer):
         Log.write("Starting native showtime library")
-        showtime.Showtime_init()
-        showtime.Showtime_join("127.0.0.1")
+        ZST.init()
+        self.stage_callback = Stage_Event()
+        ZST.attach_stage_event_callback(self.stage_callback)
+        ZST.join("127.0.0.1")
         self.perf = showtime.Showtime_create_performer(performer)
 
     def showtime_cleanup(self):
-        showtime.Showtime_destroy()
+        ZST.destroy()
 
     def disconnect(self):
         self._suppress_send_midi = True
@@ -79,13 +86,8 @@ class ShowtimeBridge(ControlSurface):
 
     def request_loop(self):
         # Handle incoming Showtime events
-        while(showtime.Showtime_event_queue_size() > 0):
-            event = showtime.Showtime_pop_event()
-            if event.get_update_type() == showtime.ZstEvent.PLUG_HIT:
-                wrapper = LiveWrapper.find_wrapper_from_uri(event.get_first())
-                Log.write("Event URI: {0}, Wrapper: {1}".format(event.get_first().to_char(), wrapper.value_plug_in.get_URI().to_char()))
-                if wrapper:
-                    wrapper.handle_incoming_plug_event(event)
+        while(ZST.event_queue_size() > 0):
+            ZST.poll_once()
 
         # Tick the song forwards one step
         if len(LiveSong.instances()) > 0:

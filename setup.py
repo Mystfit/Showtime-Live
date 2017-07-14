@@ -44,7 +44,9 @@ def install_midi_remote_scripts(custom_install_path=None):
         copytree(scriptspath, installpath, ignore=ignore_patterns('*.pyc', 'tmp*'))
 
 
-def install_showtime_package(custom_install_path=None):
+# Showtime egg installation
+# -------------------------------
+def install_showtime_egg(custom_install_path=None):
     try:
         import showtime
     except ImportError as e:
@@ -60,18 +62,23 @@ def install_showtime_package(custom_install_path=None):
         liveinstallations = find_ableton_dirs()
 
     for path in liveinstallations:
-        installpath = os.path.join(path, "Python", "site-packages", os.path.basename(scriptspath))
+        live_site_packages = os.path.join(path, "Python", "site-packages")
+        old_showtime_eggs = glob.glob(os.path.join(live_site_packages, "showtime*"))
+        installpath = os.path.join(live_site_packages, os.path.basename(scriptspath))
 
         try:
-            rmtree(installpath)
+            for egg in old_showtime_eggs:
+                print("Removing old showtime egg: {0}".format(egg))
+                rmtree(egg)
         except OSError:
             pass
 
         print("Installing Showtime python library to %s" % installpath)
         copytree(scriptspath, installpath, ignore=ignore_patterns('*.pyc', 'tmp*'))
 
+
 install_midi_remote_scripts()
-install_showtime_package()
+install_showtime_egg()
 
 platform_options = None
 if platform.system() == 'Darwin':
@@ -82,15 +89,15 @@ if platform.system() == 'Darwin':
       )
 
 setup(name='Showtime-Live',
-      version='1.5.1',
-      description='Showtime Bridge for Ableton Live.',
-      long_description=read('README.md'),
-      author='Byron Mallett',
-      author_email='byronated@gmail.com',
-      url='http://github.com/Mystfit/Showtime-Live',
-      scripts=['scripts/ShowtimeLiveServer.py'],
-      license='MIT',
-      install_requires=["rtmidi"],
-      packages=find_packages(),
-      **platform_options
-      )
+    version='1.5.1',
+    description='Showtime Bridge for Ableton Live.',
+    long_description=read('README.md'),
+    author='Byron Mallett',
+    author_email='byronated@gmail.com',
+    url='http://github.com/Mystfit/Showtime-Live',
+    scripts=['scripts/ShowtimeLiveServer.py'],
+    license='MIT',
+    install_requires=["rtmidi"],
+    packages=find_packages(),
+    **platform_options
+)
