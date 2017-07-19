@@ -5,12 +5,6 @@ from ..Utils import Utils
 
 
 class LiveSong(LiveWrapper):
-    # Message types
-    # SONG_LAYOUT = "song_layout"
-    # SONG_TRACKS_UPDATED = "song_tracks_updated"
-    # SONG_METERS = "song_meters"
-    # SONG_LOGGING_LEVEL = "log_level"
-    # SONG_NETWORK_LOGGING = "log_network"
 
     def create_handle_id(self):
         return "song"

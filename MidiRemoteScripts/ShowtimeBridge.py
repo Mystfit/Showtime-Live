@@ -7,18 +7,26 @@ from _Framework.EncoderElement import *
 
 from LiveWrappers.LiveWrapper import LiveWrapper
 from LiveWrappers.LiveSong import LiveSong
+from LiveWrappers.LiveBrowser import LiveBrowser
+
 from Logger import Log
 
 import random
 
 import showtime
 from showtime import Showtime as ZST
-from showtime import ZstEventCallback
+from showtime import ZstEventCallback, ZstEvent
 
 
 class Stage_Event(ZstEventCallback):
+
+    def set_performer(self, performer):
+        self.performer = performer
+
     def run(self, e):
-        Log.info("Stage event {0}: {1}".format(e.get_update_type(), e.get_first().to_char()))
+        if(e.get_update_type() == ZstEvent.CREATED):
+            if e.get_first().performer() != self.performer:
+                Log.info("Stage event {0}: {1}".format(e.get_update_type(), e.get_first().to_char()))
 
 
 class ShowtimeBridge(ControlSurface):
@@ -38,6 +46,7 @@ class ShowtimeBridge(ControlSurface):
 
             self.init_showtime("ableton_perf")
             LiveSong.add_instance(LiveSong(LiveUtils.getSong()))
+            # LiveBrowser.add_instance(LiveBrowser(Live.Application.get_application().browser))
 
             # Midi clock to trigger incoming message check
             self.clock = EncoderElement(msg_type=MIDI_CC_TYPE, channel=0, identifier=119, map_mode=Live.MidiMap.MapMode.absolute)
@@ -49,6 +58,7 @@ class ShowtimeBridge(ControlSurface):
         Log.write("Starting native showtime library")
         ZST.init()
         self.stage_callback = Stage_Event()
+        self.stage_callback.set_performer(performer)
         ZST.attach_stage_event_callback(self.stage_callback)
         ZST.join("127.0.0.1")
         self.perf = showtime.Showtime_create_performer(performer)
@@ -59,7 +69,7 @@ class ShowtimeBridge(ControlSurface):
     def disconnect(self):
         self._suppress_send_midi = True
         self._suppress_send_midi = False
-        self.test_native_showtime_cleanup()
+        self.showtime_cleanup()
         ControlSurface.disconnect(self)
 
     def refresh_state(self):
@@ -88,6 +98,8 @@ class ShowtimeBridge(ControlSurface):
         # Handle incoming Showtime events
         while(ZST.event_queue_size() > 0):
             ZST.poll_once()
+
+        LiveWrapper.process_deferred_actions()
 
         # Tick the song forwards one step
         if len(LiveSong.instances()) > 0:

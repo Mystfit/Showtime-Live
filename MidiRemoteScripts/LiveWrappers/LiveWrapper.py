@@ -2,7 +2,7 @@ import re
 from ..Logger import Log
 
 
-class LiveWrapper(object):    
+class LiveWrapper(object):
     # Delimiter for handle name id's in Live
     ID_DELIM = "-{"
     ID_END = "}"
@@ -11,6 +11,7 @@ class LiveWrapper(object):
     # References to all instances created of this object
     _instances = {}
     _plugs = {}
+    _deferred_actions = {}
 
     # Total ID count
     _id_counter = long(0)
@@ -27,10 +28,7 @@ class LiveWrapper(object):
         self.handleindex = handleindex
 
         self._id = self.create_handle_id()
-        
         self.create_showtime_instrument_str()
-
-        self.update_hierarchy()
         self.create_listeners()
         self.create_plugs()
 
@@ -45,6 +43,7 @@ class LiveWrapper(object):
             LiveWrapper.destroy(child)
         instance.children().clear()
         instance.destroy_listeners()
+        instance.destroy_plugs()
         try:
             del instance.__class__.instances_dict()[instance.id()]
         except KeyError:
@@ -74,18 +73,20 @@ class LiveWrapper(object):
 
         # Build showtime instrument string for plugs
         try:
+            name = self.id()
+            if hasattr(self.handle(), "name"):
+                name = LiveWrapper.get_original_name(self.handle().name)
             if self.parent():
                 if hasattr(self.parent().handle(), "name"):
                     if self.parent().showtime_instrument:
-                        self.showtime_instrument = self.parent().showtime_instrument + "/" + self.handle().name
+                        self.showtime_instrument = "{0}/{1}".format(self.parent().showtime_instrument, name)
                     else:
-                        self.showtime_instrument = self.parent().handle().name + "/" + self.handle().name
+                        parent_name = LiveWrapper.get_original_name(self.parent().handle().name)
+                        self.showtime_instrument = "{0}/{1}".format(parent_name, name)
                 else:
-                    self.showtime_instrument = self.parent.id()
-            elif hasattr(self.handle(), "name"):
-                self.showtime_instrument = self.handle().name
+                    self.showtime_instrument = self.parent().id()
             else:
-                self.showtime_instrument = str(self.id())
+                self.showtime_instrument = name
         except Exception as e:
             Log.error("Failed to build showtime instrument string. " + str(e))
 
@@ -97,6 +98,9 @@ class LiveWrapper(object):
             cls.create_child_wrappers(self, livevector)
 
     def create_plugs(self):
+        pass
+
+    def destroy_plugs(self):
         pass
 
 
@@ -118,12 +122,13 @@ class LiveWrapper(object):
         for index, handle in enumerate(livevector):
             wrapper = cls.find_wrapper_by_handle(handle)
             if not wrapper:
-                cls.add_instance(cls(handle, index, parent))
+                wrapper = cls(handle, index, parent)
+                cls.add_instance(wrapper)
                 totalNew += 1
             else:
                 totalExisting += 1
         if totalNew or totalExisting:
-            Log.info("ADDING %s: %s added, %s existing." % (cls.__name__, totalNew, totalExisting))
+            Log.write("ADDING %s: %s added, %s existing." % (cls.__name__, totalNew, totalExisting))
 
     @classmethod
     def remove_child_wrappers(cls, livevector, idfilter=None):
@@ -138,7 +143,7 @@ class LiveWrapper(object):
                 totalRemoved += 1
                 LiveWrapper.destroy(wrapper)
         if totalRemoved:
-            Log.info("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
+            Log.write("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
 
     def add_child(self, child):
         """Add a child wrapper to this wrapper"""
@@ -157,6 +162,8 @@ class LiveWrapper(object):
             cls._instances = {}
         cls._instances[instance.id()] = instance
 
+        # Only update hierarchy when the instrument has been added
+        instance.update_hierarchy()
         return instance
 
     """Returns a list of all instances of this node available"""
@@ -207,6 +214,7 @@ class LiveWrapper(object):
             if parentWrapper:
                 break
         if parentWrapper:
+            Log.info("Found parent wrapper. Looking for handle in children. Total children: {0}".format(len(parentWrapper.children())))
             for child in parentWrapper.children():
                 # We check against name and handle ref due to
                 # inconsistencies when comparing Live objects
@@ -221,24 +229,6 @@ class LiveWrapper(object):
             Log.info("Couldn't find parent wrapper for %s" % parentId)
         return None
 
-    @classmethod
-    def add_outgoing_method(cls, methodname):
-        """Registers a method for this wrapper that will publish to the network"""
-        cls._outgoing_methods[methodname] = LiveMethodDef(methodname, LiveWrapper.METHOD_READ)
-
-    @classmethod
-    def add_incoming_method(cls, methodname, methodargs, callback, isResponder=False):
-        """Registers method for this wrapper that will receive events from the network"""
-        # !!!STOPGAP!!!
-        # Convert method arg arrays to key/value pairs. Needs to be fixed in Showtime instead of here!
-        methodargkeys = {}
-        if methodargs:
-            for key in methodargs:
-                methodargkeys[key] = None
-
-        accessType = LiveWrapper.METHOD_RESPOND if isResponder else LiveWrapper.METHOD_WRITE
-        cls._incoming_methods[methodname] = LiveMethodDef(methodname, accessType, methodargkeys, callback)
-
     # ID methods
     # ----------
     def id(self):
@@ -250,7 +240,7 @@ class LiveWrapper(object):
             Log.info("Setting name to " + name)
             self.handle().name = name
         except AttributeError:
-            Log.warn("Skipping " + name)
+            Log.warn("Skipping set_handle_name() on " + name)
 
     def id_updated(self):
         """Update the stored id if the name in ableton has changed"""
@@ -284,7 +274,7 @@ class LiveWrapper(object):
             handleId = LiveWrapper.generate_id()
             handleName = LiveWrapper.generate_id_name_str(handleName, handleId)
             Log.warn("!!!TODO: Send name change to Showtime stage!!!")
-            self.set_handle_name(handleName)
+            self.defer_action(self.set_handle_name, handleName)
         return handleId
 
     @staticmethod
@@ -307,3 +297,22 @@ class LiveWrapper(object):
     def get_original_name(name):
         nameStr = re.search('^.*(?=' + LiveWrapper.ID_DELIM[0] + ')', name)
         return nameStr.group(0) if nameStr else name
+
+    
+    # Deferred actions
+    # --------
+    @staticmethod
+    def process_deferred_actions():
+        """Process all queued messages for wrappers that need to 
+        be applied post-eventloop
+        """
+        if len(LiveWrapper._deferred_actions.keys()) > 0:
+            for callback, action in LiveWrapper._deferred_actions.iteritems():
+                try:
+                    callback(action[1])
+                except Exception, e:
+                    Log.error("Couldn't run deferred action. %s" % e)
+            LiveWrapper._deferred_actions.clear()
+
+    def defer_action(self, method, argument):
+        LiveWrapper._deferred_actions[method] = (self, argument)

@@ -1,6 +1,5 @@
 from LiveWrapper import *
 from ..Utils import Utils
-
 from ..Logger import Log
 import showtime
 from showtime import Showtime as ZST
@@ -39,9 +38,9 @@ class LiveDeviceParameter(LiveWrapper):
         except Exception as e:
             Log.error("Failed to register plug. Exception was {0}".format(e))
 
-        self.input_callback = PlugCallback().__disown__()
+        self.input_callback = PlugCallback()
         self.input_callback.set_wrapper(self)
-        self.value_plug_in.attach_recv_callback(self.input_callback)
+        self.value_plug_in.input_events().attach_event_callback(self.input_callback)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
@@ -51,10 +50,11 @@ class LiveDeviceParameter(LiveWrapper):
             except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove deviceparameter listener")
 
-            self.value_plug_in.destroy_recv_callback(self.input_callback)
-            self.input_callback = None
-            showtime.Showtime_destroy_plug(self.value_plug_out)
-            showtime.Showtime_destroy_plug(self.value_plug_in)
+    def destroy_plugs(self):
+        LiveWrapper.destroy_plugs(self)
+        showtime.Showtime_destroy_plug(self.value_plug_out)
+        showtime.Showtime_destroy_plug(self.value_plug_in) 
+        self.input_callback = None
 
     def apply_param_value(self, value):
         self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(value))
