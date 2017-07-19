@@ -53,33 +53,33 @@ class LiveClip(LiveWrapper):
         # Outputs
         # -------
         self.clip_status_plug = ZST.create_output_plug(
-            ZstURI.create(
+            ZstURI(
                 "ableton_perf",
                 self.showtime_instrument,
-                "clip_status", ZstURI.OUT_JACK),
+                "clip_status"),
             showtime.ZST_INT)
 
         self.clip_notes_updated_plug = ZST.create_output_plug(
-            ZstURI.create(
+            ZstURI(
                 "ableton_perf",
                 self.showtime_instrument,
-                "clip_notes_updated", ZstURI.OUT_JACK),
+                "clip_notes_updated"),
             showtime.ZST_INT)
 
         self.clip_playing_position_plug = ZST.create_output_plug(
-            ZstURI.create(
+            ZstURI(
                 "ableton_perf",
                 self.showtime_instrument,
-                "clip_playing_position", ZstURI.OUT_JACK),
+                "clip_playing_position"),
             showtime.ZST_FLOAT)
 
         # Inputs
         # ------
         self.clip_trigger_plug = ZST.create_input_plug(
-            ZstURI.create(
+            ZstURI(
                 "ableton_perf",
                 self.showtime_instrument,
-                "clip_trigger", ZstURI.IN_JACK),
+                "clip_trigger"),
             showtime.ZST_INT)
         self.clip_trigger_callback = ClipTriggerCallback()
         self.clip_trigger_callback.set_wrapper(self)
@@ -87,10 +87,10 @@ class LiveClip(LiveWrapper):
             self.clip_trigger_callback)
 
         self.clip_notes_set_plug = ZST.create_input_plug(
-            ZstURI.create(
+            ZstURI(
                 "ableton_perf",
                 self.showtime_instrument,
-                "clip_set_notes", ZstURI.IN_JACK),
+                "clip_set_notes"),
             showtime.ZST_INT)
         self.clip_notes_set_callback = ClipNotesSetCallback()
         self.clip_notes_set_callback.set_wrapper(self)
@@ -98,10 +98,10 @@ class LiveClip(LiveWrapper):
             self.clip_notes_set_callback)
 
         self.clip_broadcast_playing_pos_plug = ZST.create_input_plug(
-            ZstURI.create(
+            ZstURI(
                 "ableton_perf",
                 self.showtime_instrument,
-                "clip_broadcast_playing_position", ZstURI.IN_JACK),
+                "clip_broadcast_playing_position"),
             showtime.ZST_INT)
         self.clip_broadcast_playing_pos_callback = ClipBroadCastPlayingPosCallback()
         self.clip_broadcast_playing_pos_callback.set_wrapper(self)

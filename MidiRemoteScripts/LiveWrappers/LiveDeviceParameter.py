@@ -29,8 +29,8 @@ class LiveDeviceParameter(LiveWrapper):
             Log.warn("No showtime_instrument string set. Value is {0}".format(self.showtime_instrument))
             return
 
-        uri_out = ZstURI.create("ableton_perf", str(self.showtime_instrument), "out", ZstURI.OUT_JACK)
-        uri_in = ZstURI.create("ableton_perf", str(self.showtime_instrument), "in", ZstURI.IN_JACK)
+        uri_out = ZstURI("ableton_perf", str(self.showtime_instrument), "out")
+        uri_in = ZstURI("ableton_perf", str(self.showtime_instrument), "in")
 
         try:
             self.value_plug_out = ZST.create_output_plug(uri_out, showtime.ZST_FLOAT)
@@ -53,7 +53,7 @@ class LiveDeviceParameter(LiveWrapper):
     def destroy_plugs(self):
         LiveWrapper.destroy_plugs(self)
         showtime.Showtime_destroy_plug(self.value_plug_out)
-        showtime.Showtime_destroy_plug(self.value_plug_in) 
+        showtime.Showtime_destroy_plug(self.value_plug_in)
         self.input_callback = None
 
     def apply_param_value(self, value):
