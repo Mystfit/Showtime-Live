@@ -3,10 +3,10 @@ from ..Utils import Utils
 from ..Logger import Log
 import showtime
 from showtime import Showtime as ZST
-from showtime import ZstURI, ZstInputPlugEventCallback
+from showtime import ZstURI, ZstPlugDataEventCallback
 
 
-class PlugCallback(ZstInputPlugEventCallback):
+class PlugCallback(ZstPlugDataEventCallback):
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
 

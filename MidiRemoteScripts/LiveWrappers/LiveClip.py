@@ -3,7 +3,7 @@ from ..Utils import Utils
 
 import showtime
 from showtime import Showtime as ZST
-from showtime import ZstURI, ZstInputPlugEventCallback
+from showtime import ZstURI, ZstPlugDataEventCallback
 
 
 # Wrapper
@@ -140,7 +140,7 @@ class LiveClip(LiveWrapper):
 
 # Callbacks
 # ---------
-class ClipTriggerCallback(ZstInputPlugEventCallback):
+class ClipTriggerCallback(ZstPlugDataEventCallback):
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
 
@@ -149,7 +149,7 @@ class ClipTriggerCallback(ZstInputPlugEventCallback):
         self.wrapper.handle().fire()
 
 
-class ClipNotesSetCallback(ZstInputPlugEventCallback):
+class ClipNotesSetCallback(ZstPlugDataEventCallback):
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
 
@@ -167,7 +167,7 @@ class ClipNotesSetCallback(ZstInputPlugEventCallback):
         self.wrapper.handle().set_notes(notes)
 
 
-class ClipBroadCastPlayingPosCallback(ZstInputPlugEventCallback):
+class ClipBroadCastPlayingPosCallback(ZstPlugDataEventCallback):
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
 
