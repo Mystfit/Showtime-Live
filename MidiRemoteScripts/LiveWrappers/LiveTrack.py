@@ -23,24 +23,24 @@ class LiveTrack(LiveWrapper):
         if self.handle():
             try:
                 self.handle().mixer_device.add_sends_listener(self.update_sends)
+                self.handle().add_devices_listener(self.update_devices)
                 self.handle().add_clip_slots_listener(self.update_clips)
                 self.handle().add_fired_slot_index_listener(self.clip_status_fired)
                 self.handle().add_playing_slot_index_listener(self.clip_status_playing)
             except (RuntimeError, AttributeError):
                 pass
-            self.handle().add_devices_listener(self.update_devices)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().mixer_device.remove_sends_listener(self.update_sends())
+                self.handle().remove_devices_listener(self.update_devices)
                 self.handle().remove_clip_slots_listener(self.update_clips)
                 self.handle().remove_fired_slot_index_listener(self.clip_status_fired)
                 self.handle().remove_playing_slot_index_listener(self.clip_status_triggered)
             except (RuntimeError, AttributeError):
                 pass
-            self.handle().remove_devices_listener(self.update_devices)    
         
     # --------
     # Incoming

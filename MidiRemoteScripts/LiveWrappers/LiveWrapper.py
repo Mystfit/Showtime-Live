@@ -120,27 +120,48 @@ class LiveWrapper(object):
         totalNew = 0
         totalExisting = 0
         for index, handle in enumerate(livevector):
-            wrapper = cls.find_wrapper_by_handle(handle)
-            if not wrapper:
+            wrappers = cls.find_wrapper_by_handle(handle)
+            if len(wrappers):
+                totalExisting += len(wrappers)
+            else:
                 wrapper = cls(handle, index, parent)
                 cls.add_instance(wrapper)
                 totalNew += 1
-            else:
-                totalExisting += 1
+                
         if totalNew or totalExisting:
             Log.write("ADDING %s: %s added, %s existing." % (cls.__name__, totalNew, totalExisting))
 
     @classmethod
     def remove_child_wrappers(cls, livevector, idfilter=None):
         """Remove wrappers that are missing a live object"""
-        localInstances = [cls.find_wrapper_by_handle(handle) for handle in livevector]
-        idlist = [w.id() for w in localInstances if w]
+
+        #localInstances = [cls.find_wrapper_by_handle(handle) for handle in livevector]
+        localInstances = []
+        for index, handle in enumerate(livevector):
+            # If we receive multiple matching wrappers, we have to
+            # make sure we match the right wrapper to the right handle.
+            # We can use the handle index as a second identifier
+            wrappers = cls.find_wrapper_by_handle(handle)
+            for wrapper in wrappers:
+                if wrapper.handleindex == index:
+                    localInstances.append(wrapper)
+
+        idlist = [w.id() for w in localInstances]
         instances = [i for i in cls.instances() if i.parent().id() == idfilter] if idfilter else cls.instances()
         Log.info("Class: %s, Handles: %s, Instances: %s" % (cls.__name__, len(idlist), len(instances)))
         totalRemoved = 0
         for wrapper in instances:
             if wrapper.id() not in idlist:
                 totalRemoved += 1
+                Log.info("Destroying wrapper: {0}".format(wrapper.id()))
+                Log.info("Raw handle names from Live:")
+                for index, handle in enumerate(livevector):
+                    Log.info("Index:{0} Parent:{1} Name:{2}".format(index, handle.canonical_parent.name, handle.name))
+                Log.info("Wrapper IDs:"),
+                for local_item in localInstances:
+                    Log.info(local_item.id())
+                Log.info("-----------")
+    
                 LiveWrapper.destroy(wrapper)
         if totalRemoved:
             Log.write("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
@@ -186,22 +207,24 @@ class LiveWrapper(object):
     def find_wrapper_by_handle(cls, handle):
         """Find an reference of this class from a given id"""
         name = None
+        matching_children = []
         try:
             name = handle.name
         except AttributeError:
             Log.info("Handle %s has no name attr" % handle)
-            return None
+            return matching_children
 
         handleId = LiveWrapper.get_id_from_name(name)
         if handleId:
-            return cls.find_wrapper_by_id(handleId)
-
-        Log.info("No id in name. Searching in parent")
-        return LiveWrapper.find_wrapper_from_handle_parent(handle)
+            matching_children.append(cls.find_wrapper_by_id(handleId))
+        else:
+            matching_children = LiveWrapper.find_wrapper_from_handle_parent(handle)
+        return matching_children
 
     @staticmethod
     def find_wrapper_from_handle_parent(handle):
         """Find wrapper for a handle from its siblings"""
+        matching_children = []
         parentId = None
         try:
             parentId = LiveWrapper.get_id_from_name(handle.canonical_parent.name)
@@ -215,19 +238,21 @@ class LiveWrapper(object):
                 break
         if parentWrapper:
             Log.info("Found parent wrapper. Looking for handle in children. Total children: {0}".format(len(parentWrapper.children())))
+            
             for child in parentWrapper.children():
                 # We check against name and handle ref due to
                 # inconsistencies when comparing Live objects
                 try:
                     if child.handle():
                         if child.handle().name == handle.name:
-                            Log.info("Found wrapper inside parent. %s" % child.handle().name)
-                            return child
+                            Log.info("Found wrapper {0} inside parent. Name:{1}".format(child.id(), child.handle().name))
+                            matching_children.append(child)
                 except AttributeError:
                     Log.info("Parent handle %s has no name attr" % handle)
         else:
             Log.info("Couldn't find parent wrapper for %s" % parentId)
-        return None
+
+        return matching_children
 
     # ID methods
     # ----------
