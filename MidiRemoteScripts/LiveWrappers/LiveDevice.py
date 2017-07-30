@@ -10,7 +10,7 @@ class LiveDevice(LiveWrapper):
             self.handle().add_parameters_listener(self.update_parameters)
 
             if self.handle().can_have_chains:
-                if hasattr("chains", self.handle()):
+                if hasattr(self.handle(), "chains"):
                     self.handle().add_chains_listener(self.update_chains)
 
     def destroy_listeners(self):

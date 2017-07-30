@@ -43,7 +43,6 @@ class LiveSong(LiveWrapper):
                         Utils.truncate_float(track.handle().output_meter_level, 4)
                     else:
                         meterLevels[track.id()] = Utils.truncate_float(((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5), 4)
-        self.update(LiveSong.SONG_METERS, meterLevels)
 
     # ---------
     # Hierarchy

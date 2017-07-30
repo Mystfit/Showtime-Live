@@ -46,7 +46,7 @@ class LiveDeviceParameter(LiveWrapper):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
-                self.handle().destroy_value_listener(self.value_updated)
+                self.handle().remove_value_listener(self.value_updated)
             except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove deviceparameter listener")
 

@@ -112,7 +112,7 @@ class LiveClip(LiveWrapper):
         LiveWrapper.destroy_plugs(self)
         ZST.destroy_plug(self.clip_status_plug)
         ZST.destroy_plug(self.clip_notes_updated_plug)
-        ZST.destroy_plug(self.clip_playing_position)
+        ZST.destroy_plug(self.clip_playing_position_plug)
         ZST.destroy_plug(self.clip_trigger_plug)
         ZST.destroy_plug(self.clip_notes_set_plug)
         ZST.destroy_plug(self.clip_broadcast_playing_pos_plug)

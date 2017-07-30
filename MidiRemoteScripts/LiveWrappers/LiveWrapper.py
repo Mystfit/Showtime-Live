@@ -135,7 +135,6 @@ class LiveWrapper(object):
     def remove_child_wrappers(cls, livevector, idfilter=None):
         """Remove wrappers that are missing a live object"""
 
-        #localInstances = [cls.find_wrapper_by_handle(handle) for handle in livevector]
         localInstances = []
         for index, handle in enumerate(livevector):
             # If we receive multiple matching wrappers, we have to
@@ -143,26 +142,19 @@ class LiveWrapper(object):
             # We can use the handle index as a second identifier
             wrappers = cls.find_wrapper_by_handle(handle)
             for wrapper in wrappers:
-                if wrapper.handleindex == index:
-                    localInstances.append(wrapper)
+                if wrapper:
+                    if wrapper.handleindex == index:
+                        localInstances.append(wrapper)
 
-        idlist = [w.id() for w in localInstances]
+        idlist = [w.id() for w in localInstances if w]
         instances = [i for i in cls.instances() if i.parent().id() == idfilter] if idfilter else cls.instances()
         Log.info("Class: %s, Handles: %s, Instances: %s" % (cls.__name__, len(idlist), len(instances)))
         totalRemoved = 0
         for wrapper in instances:
             if wrapper.id() not in idlist:
-                totalRemoved += 1
                 Log.info("Destroying wrapper: {0}".format(wrapper.id()))
-                Log.info("Raw handle names from Live:")
-                for index, handle in enumerate(livevector):
-                    Log.info("Index:{0} Parent:{1} Name:{2}".format(index, handle.canonical_parent.name, handle.name))
-                Log.info("Wrapper IDs:"),
-                for local_item in localInstances:
-                    Log.info(local_item.id())
-                Log.info("-----------")
-    
                 LiveWrapper.destroy(wrapper)
+                totalRemoved += 1
         if totalRemoved:
             Log.write("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
 
