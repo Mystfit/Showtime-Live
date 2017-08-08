@@ -25,22 +25,15 @@ class LiveDeviceParameter(LiveWrapper):
             self.handle().add_value_listener(self.value_updated)
 
     def create_plugs(self):
-        if not self.showtime_instrument:
-            Log.warn("No showtime_instrument string set. Value is {0}".format(self.showtime_instrument))
-            return
-
-        uri_out = ZstURI("ableton_perf", str(self.showtime_instrument), "out")
-        uri_in = ZstURI("ableton_perf", str(self.showtime_instrument), "in")
-
         try:
-            self.value_plug_out = ZST.create_output_plug(uri_out, showtime.ZST_FLOAT)
-            self.value_plug_in = ZST.create_input_plug(uri_in, showtime.ZST_FLOAT)
+            self.value_plug_out = self.create_output_plug("out", showtime.ZST_FLOAT)
+            self.value_plug_in = self.create_input_plug("in", showtime.ZST_FLOAT)
         except Exception as e:
             Log.error("Failed to register plug. Exception was {0}".format(e))
 
         self.input_callback = PlugCallback()
         self.input_callback.set_wrapper(self)
-        self.value_plug_in.input_events().attach_event_callback(self.input_callback)
+        self.value_plug_in.attach_receive_callback(self.input_callback)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
@@ -52,8 +45,10 @@ class LiveDeviceParameter(LiveWrapper):
 
     def destroy_plugs(self):
         LiveWrapper.destroy_plugs(self)
-        showtime.Showtime_destroy_plug(self.value_plug_out)
-        showtime.Showtime_destroy_plug(self.value_plug_in)
+        self.remove_plug(self.value_plug_out)
+        self.remove_plug(self.value_plug_in)
+        self.value_plug_out = None
+        self.value_plug_in = None
         self.input_callback = None
 
     def apply_param_value(self, value):

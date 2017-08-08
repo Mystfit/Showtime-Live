@@ -7,7 +7,7 @@ from ..Utils import Utils
 class LiveSong(LiveWrapper):
 
     def create_handle_id(self):
-        return "song"
+        return "ableton_live_song"
 
     # -------------------
     # Wrapper definitions

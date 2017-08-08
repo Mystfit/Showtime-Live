@@ -90,7 +90,7 @@ class MidiScreamer:
         self.midi_out.closePort()
 
 if __name__ == "__main__":
-    m = MidiRouter(1)
+    m = MidiScreamer(1, True)
     try:
         while 1:
             time.sleep(1)

@@ -46,76 +46,45 @@ class LiveClip(LiveWrapper):
     def create_plugs(self):
         LiveWrapper.create_plugs(self)
 
-        if not self.showtime_instrument:
-            Log.warn("No showtime_instrument string set. Value is {0}".format(self.showtime_instrument))
-            return
-
         # Outputs
         # -------
-        self.clip_status_plug = ZST.create_output_plug(
-            ZstURI(
-                "ableton_perf",
-                self.showtime_instrument,
-                "clip_status"),
-            showtime.ZST_INT)
-
-        self.clip_notes_updated_plug = ZST.create_output_plug(
-            ZstURI(
-                "ableton_perf",
-                self.showtime_instrument,
-                "clip_notes_updated"),
-            showtime.ZST_INT)
-
-        self.clip_playing_position_plug = ZST.create_output_plug(
-            ZstURI(
-                "ableton_perf",
-                self.showtime_instrument,
-                "clip_playing_position"),
-            showtime.ZST_FLOAT)
+        self.clip_status_plug = self.create_output_plug("clip_status", showtime.ZST_INT)
+        self.clip_notes_updated_plug = self.create_output_plug("clip_notes_updated", showtime.ZST_INT)
+        self.clip_playing_position_plug = self.create_output_plug("clip_playing_position", showtime.ZST_FLOAT)
 
         # Inputs
         # ------
-        self.clip_trigger_plug = ZST.create_input_plug(
-            ZstURI(
-                "ableton_perf",
-                self.showtime_instrument,
-                "clip_trigger"),
-            showtime.ZST_INT)
+        self.clip_trigger_plug = self.create_input_plug("clip_trigger", showtime.ZST_INT)
         self.clip_trigger_callback = ClipTriggerCallback()
         self.clip_trigger_callback.set_wrapper(self)
-        self.clip_trigger_plug.input_events().attach_event_callback(
-            self.clip_trigger_callback)
+        self.clip_trigger_plug.attach_receive_callback(self.clip_trigger_callback)
 
-        self.clip_notes_set_plug = ZST.create_input_plug(
-            ZstURI(
-                "ableton_perf",
-                self.showtime_instrument,
-                "clip_set_notes"),
-            showtime.ZST_INT)
+        self.clip_notes_set_plug = self.create_input_plug("clip_set_notes", showtime.ZST_INT)
         self.clip_notes_set_callback = ClipNotesSetCallback()
         self.clip_notes_set_callback.set_wrapper(self)
-        self.clip_notes_set_plug.input_events().attach_event_callback(
-            self.clip_notes_set_callback)
+        self.clip_notes_set_plug.attach_receive_callback(self.clip_notes_set_callback)
 
-        self.clip_broadcast_playing_pos_plug = ZST.create_input_plug(
-            ZstURI(
-                "ableton_perf",
-                self.showtime_instrument,
-                "clip_broadcast_playing_position"),
-            showtime.ZST_INT)
+        self.clip_broadcast_playing_pos_plug = self.create_input_plug("clip_broadcast_playing_position", showtime.ZST_INT)
         self.clip_broadcast_playing_pos_callback = ClipBroadCastPlayingPosCallback()
         self.clip_broadcast_playing_pos_callback.set_wrapper(self)
-        self.clip_broadcast_playing_pos_plug.input_events().attach_event_callback(
-            self.clip_broadcast_playing_pos_callback)
+        self.clip_broadcast_playing_pos_plug.attach_receive_callback(self.clip_broadcast_playing_pos_callback)
 
     def destroy_plugs(self):
         LiveWrapper.destroy_plugs(self)
-        ZST.destroy_plug(self.clip_status_plug)
-        ZST.destroy_plug(self.clip_notes_updated_plug)
-        ZST.destroy_plug(self.clip_playing_position_plug)
-        ZST.destroy_plug(self.clip_trigger_plug)
-        ZST.destroy_plug(self.clip_notes_set_plug)
-        ZST.destroy_plug(self.clip_broadcast_playing_pos_plug)
+        self.remove_plug(self.clip_status_plug)
+        self.remove_plug(self.clip_notes_updated_plug)
+        self.remove_plug(self.clip_playing_position_plug)
+        self.remove_plug(self.clip_trigger_plug)
+        self.remove_plug(self.clip_notes_set_plug)
+        self.remove_plug(self.clip_broadcast_playing_pos_plug)
+
+        self.clip_status_plug = None
+        self.clip_notes_updated_plug = None
+        self.clip_playing_position_plug = None
+        self.clip_trigger_plug = None
+        self.clip_notes_set_plug = None
+        self.clip_broadcast_playing_pos_plug = None
+
         self.clip_trigger_callback = None
         self.clip_notes_set_callback = None
         self.clip_broadcast_playing_pos_callback = None

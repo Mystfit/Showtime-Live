@@ -15,18 +15,7 @@ import random
 
 import showtime
 from showtime import Showtime as ZST
-from showtime import ZstEventCallback, ZstEvent
-
-
-class Stage_Event(ZstEventCallback):
-
-    def set_performer(self, performer):
-        self.performer = performer
-
-    def run(self, e):
-        if(e.get_update_type() == ZstEvent.CREATED):
-            if e.get_first().performer() != self.performer:
-                Log.info("Stage event {0}: {1}".format(e.get_update_type(), e.get_first().to_char()))
+from showtime import ZstEventCallback, ZstEvent, ZstComponent
 
 
 class ShowtimeBridge(ControlSurface):
@@ -44,7 +33,9 @@ class ShowtimeBridge(ControlSurface):
             Log.write("Python version " + sys.version)
             Log.info(sys.version)
 
-            self.init_showtime("ableton_perf")
+            Log.write("Starting native showtime library")
+            ZST.init()
+            ZST.join("127.0.0.1")
             LiveSong.add_instance(LiveSong(LiveUtils.getSong()))
             # LiveBrowser.add_instance(LiveBrowser(Live.Application.get_application().browser))
 
@@ -53,15 +44,6 @@ class ShowtimeBridge(ControlSurface):
 
             self.refresh_state()
             self._suppress_send_midi = False
-
-    def init_showtime(self, performer):
-        Log.write("Starting native showtime library")
-        ZST.init()
-        self.stage_callback = Stage_Event()
-        self.stage_callback.set_performer(performer)
-        ZST.attach_stage_event_callback(self.stage_callback)
-        ZST.join("127.0.0.1")
-        self.perf = showtime.Showtime_create_performer(performer)
 
     def showtime_cleanup(self):
         ZST.destroy()

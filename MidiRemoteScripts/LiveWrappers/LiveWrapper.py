@@ -1,8 +1,10 @@
 import re
 from ..Logger import Log
 
+from showtime import ZstComponent
 
-class LiveWrapper(object):
+
+class LiveWrapper(ZstComponent):
     # Delimiter for handle name id's in Live
     ID_DELIM = "-{"
     ID_END = "}"
@@ -23,13 +25,21 @@ class LiveWrapper(object):
 
         self._parent = parent
         if parent:
-            self._parent.add_child(self)
+            if hasattr(self._parent, "add_child"):
+                self._parent.add_child(self)
 
         self.handleindex = handleindex
 
         self._id = self.create_handle_id()
-        self.create_showtime_instrument_str()
+        self.name = self._id
+        if hasattr(self.handle(), "name"):
+            self.name = LiveWrapper.get_original_name(self.handle().name)
+
         self.create_listeners()
+        if parent:
+            ZstComponent.__init__(self, "LiveWrapper", str(self.name), parent)
+        else:
+            ZstComponent.__init__(self, "LiveWrapper", str(self.name))
         self.create_plugs()
 
     # Cleanup
@@ -64,31 +74,6 @@ class LiveWrapper(object):
                 self.handle().remove_name_listener(self.id_updated)
             except (RuntimeError, AttributeError):
                 pass
-
-
-    # Showtime-native interface
-    # -------------------------
-    def create_showtime_instrument_str(self):
-        self.showtime_instrument = ""
-
-        # Build showtime instrument string for plugs
-        try:
-            name = self.id()
-            if hasattr(self.handle(), "name"):
-                name = LiveWrapper.get_original_name(self.handle().name)
-            if self.parent():
-                if hasattr(self.parent().handle(), "name"):
-                    if self.parent().showtime_instrument:
-                        self.showtime_instrument = "{0}/{1}".format(self.parent().showtime_instrument, name)
-                    else:
-                        parent_name = LiveWrapper.get_original_name(self.parent().handle().name)
-                        self.showtime_instrument = "{0}/{1}".format(parent_name, name)
-                else:
-                    self.showtime_instrument = self.parent().id()
-            else:
-                self.showtime_instrument = name
-        except Exception as e:
-            Log.error("Failed to build showtime instrument string. " + str(e))
 
     def update_hierarchy(self, cls=None, livevector=None):
         """Refreshes the hierarchy of wrappers underneath this wrapper"""
