@@ -3,24 +3,59 @@ import platform
 
 import showtime
 from showtime import Showtime as ZST
-from showtime import ZstEventCallback, ZstURI, ZstPlugDataEventCallback
+from showtime import ZstEventCallback, ZstURI, ZstPlugDataEventCallback, ZstComponent
 
 
-class CC_Event(ZstPlugDataEventCallback):
-    def run(self, plug):
+# class CC_Event(ZstPlugDataEventCallback):
+#     def run(self, plug):
+#         if plug.value().size() > 0:
+#             val = plug.value().int_at(0)
+#             print("Sending midi message Channel:{0} CC:{1} Val:{2}".format(self.channel, self.cc, val))
+#             self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(self.channel, self.cc, val))
+
+#     def set_cc_params(self, channel, cc, midi_out):
+#         self.channel = channel
+#         self.cc = cc
+#         self.midi_out = midi_out
+
+class CCGroup(ZstComponent):
+    def __init__(self, name, parent, midiport):
+        ZstComponent.__init__(self, "MidiCCGroup", name, parent)
+        self.midi_out = midiport
+        self.plug_cc_map = {}
+        self.midi_out = midiport
+        self.entities = []
+
+    def compute(self, plug):
         if plug.value().size() > 0:
-            val = plug.value().int_at(0)
-            print("Sending midi message Channel:{0} CC:{1} Val:{2}".format(self.channel, self.cc, val))
-            self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(self.channel, self.cc, val))
+            if plug.get_URI().path() in self.plug_cc_map:
+                plug_URI = plug.get_URI().path()
+                channel = self.plug_cc_map[plug_URI][0]
+                cc = self.plug_cc_map[plug_URI][1]
+                val = plug.value().int_at(0)
+                print("Sending midi message Channel:{0} CC:{1} Val:{2}".format(channel, cc, val))
+                self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(channel, cc, val))
 
-    def set_cc_params(self, channel, cc, midi_out):
-        self.channel = channel
-        self.cc = cc
-        self.midi_out = midi_out
+    def create_cc_entity(self, name, channel, cc):
+        entity = CCGroup(name, self, self.midi_out)
+        self.entities.append(entity)
+        entity.create_cc_plug_pair(channel, cc)
+
+    def create_cc_plug_pair(self, channel, cc):
+        in_plug = self.create_input_plug("recv", showtime.ZST_INT)
+        # out_plug = self.create_output_plug("{0}/send".format(name), showtime.ZST_INT)
+        self.plug_cc_map[in_plug.get_URI().path()] = (channel, cc)
 
 
-class MidiPerformer:
+    def send_cc(self, channel, cc, value):
+        self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(channel, cc, value))
+
+
+class MidiPerformer(ZstComponent):
     def __init__(self, performer, midiportindex, virtual=False):
+        self.groups = []
+        ZstComponent.__init__(self, "MidiPerformer", performer)
+
         # Setup midi port 
         self.midiportindex = midiportindex
         self.midi_active = False
@@ -33,20 +68,11 @@ class MidiPerformer:
         if not self.midi_out:
             return
 
-        ZST.init()
-        ZST.join("127.0.0.1")
-        self.performer_name = performer
-        self.performer = ZST.create_performer(self.performer_name)
-        print("Creating performer %s" % self.performer_name)
-        self.plugs = []
-        self.plug_callbacks = []
-
-    def create_cc_plug_pair(self, name, channel, cc):        
-        in_callback = CC_Event()
-        in_callback.set_cc_params(channel, cc, self.midi_out)
-        in_plug = ZST.create_input_plug(ZstURI(self.performer_name, name, "in"), showtime.IN_JACK)
-        in_plug.input_events().attach_event_callback(in_callback)
-        self.plug_callbacks.append(in_callback)
+    def create_cc_group(self, name, parent=None):
+        parent = parent if parent else self
+        group = CCGroup(name, parent, self.midi_out)
+        self.groups.append(group)
+        return group
 
     def set_midi_active(self, state):
         self.midi_active = state
@@ -88,9 +114,6 @@ class MidiPerformer:
     def close(self):
         self.midi_out.closePort()
         ZST.destroy()
-
-    def send_cc(self, channel, cc, value):
-        self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(channel, cc, value))
 
 
 if __name__ == "__main__":
