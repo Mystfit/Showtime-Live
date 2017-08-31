@@ -107,10 +107,10 @@ class Minilouge(MidiPerformer.MidiPerformer):
 
         self.filter = self.create_cc_group("filter")
         self.filter.create_cc_entity("cutoff", channel, 11)
-        self.filter.create_cc_entity("resonance", channel, 44)
-        self.filter.create_cc_entity("eg_int", channel, 45)
-        self.filter.create_cc_entity("keytrack", channel, 82)
-        self.filter.create_cc_entity("velocity", channel, 83)
+        self.filter.create_cc_entity("resonance", channel, 12)
+        self.filter.create_cc_entity("eg_int", channel, 13)
+        self.filter.create_cc_entity("keytrack", channel, 83)
+        self.filter.create_cc_entity("velocity", channel, 82)
 
 
 if __name__ == "__main__":
@@ -121,15 +121,17 @@ if __name__ == "__main__":
     m = Minilouge(synth_name, 1)
     time.sleep(0.1)
     
-    clock1 = Clock(m.midi_out, ZstURI("{0}/filter/cutoff/recv".format(synth_name)))
-    clock2 = Clock(m.midi_out, ZstURI("{0}/delay/hipass_cutoff/recv".format(synth_name)))
+    # clock1 = Clock(m.midi_out, ZstURI("{0}/filter/cutoff/recv".format(synth_name)))
+    # clock2 = Clock(m.midi_out, ZstURI("{0}/delay/hipass_cutoff/recv".format(synth_name)))
 
-    clock1.start()
-    clock1.midi_active = m.midi_active
-    clock2.start()
-    clock2.midi_active = m.midi_active
+    # clock1.start()
+    # clock1.midi_active = m.midi_active
+    # clock2.start()
+    # clock2.midi_active = m.midi_active
+    while True:
+        ZST.poll_once()
     raw_input("pause")
 
     # clock1.stop()
-    clock2.stop()
+    # clock2.stop()
     m.close()
