@@ -128,7 +128,7 @@ class LiveTrack(LiveWrapper):
                 for note in notes:
                     if note not in self.playingnotes:
                         self.playingnotes.add(note)
-                        changednotes.append({"status": LiveTrack.NOTE_ON, "note": note})
+                        # changednotes.append({"status": LiveTrack.NOTE_ON, "note": note})
 
                 # Send note diff to showtime
                 if len(changednotes) > 0:

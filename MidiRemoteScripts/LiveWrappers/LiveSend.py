@@ -4,7 +4,7 @@ from LiveWrapper import *
 class LiveSend(LiveWrapper):
     # Message types
     # SEND_UPDATED = "send_updated"
-    # SEND_SET = "send_set"    
+    # SEND_SET = "send_set"
 
     def create_handle_id(self):
         return "%ss%s" % (self.parent().id(), self.handleindex)
@@ -30,7 +30,8 @@ class LiveSend(LiveWrapper):
     # --------
     @staticmethod
     def send_set(args):
-        instance = LiveSend.find_wrapper_by_id(args["id"])
+        #instance = LiveSend.find_wrapper_by_id(args["id"])
+        pass
 
     def apply_param_value(self, value):
         Log.info("Val:" + value + " on " + str(self))
@@ -40,5 +41,5 @@ class LiveSend(LiveWrapper):
     # Outgoing
     # --------
     def send_updated(self):
-        pass
         # self.update(LiveSend.SEND_UPDATED, self.handle().value)
+        pass

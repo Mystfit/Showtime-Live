@@ -3,7 +3,6 @@ from LiveWrapper import *
 
 
 class LiveClipslot(LiveWrapper):
-    
     def create_handle_id(self):
         return "%scs%s" % (self.parent().id(), self.handleindex)
 

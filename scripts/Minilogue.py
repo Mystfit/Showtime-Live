@@ -8,45 +8,6 @@ from showtime import Showtime as ZST
 from showtime import ZstEventCallback, ZstURI, ZstPlugDataEventCallback, ZstComponent
 
 
-class Clock(threading.Thread):
-    # ----
-    # The clock class sends a 1ms midi CC message with an incrementing value
-    # that the Live ControlSurface can use to trigger faster event updates
-    # ----
-    def __init__(self, midiport, target_URI):
-        threading.Thread.__init__(self)
-        self.exitFlag = 0
-        self.setDaemon(True)
-        self.clockVal = 0
-        self.rate = 0.005
-        self.midi_out = midiport
-        self.midi_active = False
-        self.entity = ZstComponent("OUTPUT", "clock")
-        time.sleep(0.1)
-
-        self.sin_out = self.entity.create_output_plug("sin", showtime.OUT_JACK)
-        
-        time.sleep(0.1)
-        ZST.connect_cable(self.sin_out.get_URI(), target_URI)
-
-    def stop(self):
-        self.midi_active = False
-        self.exitFlag = 1
-
-    def run(self):
-        while not self.exitFlag:
-            if self.midi_active and self.midi_out:
-                self.clockVal += 0.005
-                sinval = (math.sin(self.clockVal) * 0.25 + 0.5) * 127
-                # self.clockVal %= 127
-                self.sin_out.value().append_int(int(sinval))
-                self.sin_out.fire()
-                self.sin_out.value().clear()
-
-            ZST.poll_once()
-            time.sleep(self.rate)
-
-
 class Minilouge(MidiPerformer.MidiPerformer):
     def __init__(self, synth_name, midiportindex):
         MidiPerformer.MidiPerformer.__init__(self, synth_name, midiportindex)
@@ -120,18 +81,8 @@ if __name__ == "__main__":
     synth_name = "minilogue"
     m = Minilouge(synth_name, 1)
     time.sleep(0.1)
-    
-    # clock1 = Clock(m.midi_out, ZstURI("{0}/filter/cutoff/recv".format(synth_name)))
-    # clock2 = Clock(m.midi_out, ZstURI("{0}/delay/hipass_cutoff/recv".format(synth_name)))
 
-    # clock1.start()
-    # clock1.midi_active = m.midi_active
-    # clock2.start()
-    # clock2.midi_active = m.midi_active
     while True:
         ZST.poll_once()
     raw_input("pause")
-
-    # clock1.stop()
-    # clock2.stop()
     m.close()

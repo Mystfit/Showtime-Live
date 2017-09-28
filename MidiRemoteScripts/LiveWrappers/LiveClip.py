@@ -55,19 +55,8 @@ class LiveClip(LiveWrapper):
         # Inputs
         # ------
         self.clip_trigger_plug = self.create_input_plug("clip_trigger", showtime.ZST_INT)
-        self.clip_trigger_callback = ClipTriggerCallback()
-        self.clip_trigger_callback.set_wrapper(self)
-        self.clip_trigger_plug.attach_receive_callback(self.clip_trigger_callback)
-
         self.clip_notes_set_plug = self.create_input_plug("clip_set_notes", showtime.ZST_INT)
-        self.clip_notes_set_callback = ClipNotesSetCallback()
-        self.clip_notes_set_callback.set_wrapper(self)
-        self.clip_notes_set_plug.attach_receive_callback(self.clip_notes_set_callback)
-
         self.clip_broadcast_playing_pos_plug = self.create_input_plug("clip_broadcast_playing_position", showtime.ZST_INT)
-        self.clip_broadcast_playing_pos_callback = ClipBroadCastPlayingPosCallback()
-        self.clip_broadcast_playing_pos_callback.set_wrapper(self)
-        self.clip_broadcast_playing_pos_plug.attach_receive_callback(self.clip_broadcast_playing_pos_callback)
 
     def destroy_plugs(self):
         LiveWrapper.destroy_plugs(self)
@@ -89,6 +78,35 @@ class LiveClip(LiveWrapper):
         self.clip_notes_set_callback = None
         self.clip_broadcast_playing_pos_callback = None
 
+    def compute(self, plug):
+        if ZstURI.equal(plug.get_URI(), self.clip_trigger_plug.get_URI()):
+            self.recv_trigger()
+        elif ZstURI.equal(plug.get_URI(), self.clip_notes_set_plug.get_URI()):
+            self.recv_notes()
+        elif ZstURI.equal(plug.get_URI(), self.clip_broadcast_playing_pos_plug.get_URI()):
+            self.recv_broadcast_playing_pos()
+
+    def recv_trigger(self):
+        Log.info("LIVE: Clip received trigger message")
+        self.handle().fire()
+
+    def recv_notes(self):
+        Log.info("LIVE: Clip received notes set message")
+        notes = []
+        winding = 3
+
+        for note_index in range(plug.size()) / winding:
+            note_pitch = plug.int_at(note_index)
+            note_start = plug.float_at(note_index+1)
+            note_end = plug.float_at(note_index+2)
+            notes.append((note_pitch, note_start, note_end))
+
+        self.handle().set_notes(notes)
+
+    def recv_broadcast_playing_pos(self):
+        Log.info("LIVE: Clip received set broadcast position message")
+        self.wrapper.usePlayingPos = bool(plug.int_at(0))
+
     # --------
     # Outgoing
     # --------
@@ -96,51 +114,12 @@ class LiveClip(LiveWrapper):
         notes = self.handle().get_notes(0.0, 0, self.handle().length, 127)
         for note in notes:
             for note_info in note:
-                self.clip_notes_updated_plug.values().append(note_info)
+                Log.info(note_info)
+                Log.info(type(note_info))
+                self.clip_notes_updated_plug.append_float(float(note_info))
         self.clip_notes_updated_plug.fire()
-        self.clip_notes_updated_plug.values().clear()
 
     def playing_position(self):
-        self.clip_playing_position_plug.values().append(
+        self.clip_playing_position_plug.append(
             Utils.truncate_float(self.handle().playing_position, 4))
         self.clip_playing_position_plug.fire()
-        self.clip_playing_position_plug.values().clear()
-
-
-# Callbacks
-# ---------
-class ClipTriggerCallback(ZstPlugDataEventCallback):
-    def set_wrapper(self, wrapper):
-        self.wrapper = wrapper
-
-    def run(self, plug):
-        Log.info("LIVE: Clip received trigger message")
-        self.wrapper.handle().fire()
-
-
-class ClipNotesSetCallback(ZstPlugDataEventCallback):
-    def set_wrapper(self, wrapper):
-        self.wrapper = wrapper
-
-    def run(self, plug):
-        Log.info("LIVE: Clip received notes set message")
-        notes = []
-        winding = 3
-        
-        for note_index in range(plug.values().size()) / winding:
-            note_pitch = plug.values().int_at(note_index)
-            note_start = plug.values().float_at(note_index+1)
-            note_end = plug.values().float_at(note_index+2)
-            notes.append((note_pitch, note_start, note_end))
-
-        self.wrapper.handle().set_notes(notes)
-
-
-class ClipBroadCastPlayingPosCallback(ZstPlugDataEventCallback):
-    def set_wrapper(self, wrapper):
-        self.wrapper = wrapper
-
-    def run(self, plug):
-        Log.info("LIVE: Clip received set broadcast position message")
-        self.wrapper.usePlayingPos = bool(plug.values().int_at(0))
-

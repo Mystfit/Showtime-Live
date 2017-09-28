@@ -27,12 +27,12 @@ class CCGroup(ZstComponent):
         self.entities = []
 
     def compute(self, plug):
-        if plug.value().size() > 0:
+        if plug.size() > 0:
             if plug.get_URI().path() in self.plug_cc_map:
                 plug_URI = plug.get_URI().path()
                 channel = self.plug_cc_map[plug_URI][0]
                 cc = self.plug_cc_map[plug_URI][1]
-                val = plug.value().int_at(0)
+                val = plug.int_at(0)
                 print("Sending midi message Channel:{0} CC:{1} Val:{2}".format(channel, cc, val))
                 self.midi_out.sendMessage(rtmidi.MidiMessage.controllerEvent(channel, cc, val))
 

@@ -20,26 +20,23 @@ class LiveWrapper(ZstComponent):
 
     # Constructor
     def __init__(self, handle, handleindex=None, parent=None):
-        self._handle = handle
-        self._children = set()
-
-        self._parent = parent
-        if parent:
-            if hasattr(self._parent, "add_child"):
-                self._parent.add_child(self)
-
         self.handleindex = handleindex
-
+        self._handle = handle
+        self._parent = parent
+        self._children = set()
         self._id = self.create_handle_id()
         self.name = self._id
         if hasattr(self.handle(), "name"):
             self.name = LiveWrapper.get_original_name(self.handle().name)
-
+        if parent:
+            if hasattr(self._parent, "add_child"):
+                self._parent.add_child(self)
         self.create_listeners()
         if parent:
             ZstComponent.__init__(self, "LiveWrapper", str(self.name), parent)
         else:
             ZstComponent.__init__(self, "LiveWrapper", str(self.name))
+        self.activate()
         self.create_plugs()
 
     # Cleanup
@@ -86,6 +83,9 @@ class LiveWrapper(ZstComponent):
         pass
 
     def destroy_plugs(self):
+        pass
+
+    def compute(self, plug):
         pass
 
 

@@ -15,7 +15,7 @@ import random
 
 import showtime
 from showtime import Showtime as ZST
-from showtime import ZstEventCallback, ZstEvent, ZstComponent
+from showtime import ZstComponent
 
 
 class ShowtimeBridge(ControlSurface):
@@ -61,6 +61,10 @@ class ShowtimeBridge(ControlSurface):
     def build_midi_map(self, midi_map_handle):
         Log.info("Building midi map...")
         ControlSurface.build_midi_map(self, midi_map_handle)
+
+    def update(self):
+        self.request_loop()
+        ControlSurface.update(self)
 
     def receive_midi(self, midi_bytes):
         # Hack to get a faster update loop. Call our update function each time we receive
