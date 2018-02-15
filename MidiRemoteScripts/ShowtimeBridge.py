@@ -65,14 +65,11 @@ class ShowtimeBridge(ControlSurface):
             self.refresh_state()
             self._suppress_send_midi = False
 
-    def showtime_cleanup(self):
-        del self.join_event
-        ZST.destroy()
-
     def disconnect(self):
         self._suppress_send_midi = True
         self._suppress_send_midi = False
-        self.showtime_cleanup()
+        ZST.leave()
+        del self.join_event
         ControlSurface.disconnect(self)
 
     def refresh_state(self):

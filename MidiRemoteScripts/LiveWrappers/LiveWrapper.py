@@ -84,6 +84,24 @@ class LiveWrapper(ZstContainer):
         raise NotImplementedError("Refresh hierarchy needs to be implemented in derived wrapper")
 
     @staticmethod
+    def find_wrapper_from_live_ptr(live_ptr):
+        result = None
+        try:
+            result = LiveWrapper._ptr_wrappers[live_ptr]
+        except KeyError:
+            pass
+        return result
+
+    @staticmethod
+    def find_live_ptr_from_wrapper(wrapper):
+        result = None
+        try:
+            result = LiveWrapper._wrapper_ptrs[wrapper.URI().path()]
+        except KeyError:
+            pass
+        return result
+
+    @staticmethod
     def update_hierarchy(parent, wrappertype, livevector=None, postactivate=False):
         """Refreshes the hierarchy of wrappers underneath this wrapper"""
         if livevector is not None:
@@ -149,7 +167,7 @@ class LiveWrapper(ZstContainer):
 
         for entity in removed_entities:
             Log.debug("Removing {}".format(entity.URI().path()))
-            live_ptr = LiveWrapper._wrapper_ptrs[entity.URI().path()]
+            live_ptr = LiveWrapper.find_live_ptr_from_wrapper(entity)
             del LiveWrapper._ptr_wrappers[live_ptr]
             del LiveWrapper._wrapper_ptrs[entity.URI().path()]
             showtime.deactivate_entity_async(entity)
@@ -169,7 +187,7 @@ class LiveWrapper(ZstContainer):
 
         for entity in parent.children():
             try:
-                live_ptr = LiveWrapper._wrapper_ptrs[entity.URI().path()]
+                live_ptr =  LiveWrapper.find_live_ptr_from_wrapper(entity)
                 if not live_ptr in live_ptrs:
                     missing.append(entity)
             except KeyError:

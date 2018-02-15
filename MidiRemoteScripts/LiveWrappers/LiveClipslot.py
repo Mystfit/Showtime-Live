@@ -14,7 +14,7 @@ class LiveClipslot(LiveWrapper):
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
         if self.handle():
-            self.handle().add_has_clip_listener(self.refresh_hierarchy)
+            self.handle().add_has_clip_listener(self.refresh_clip)
             self.handle().add_is_triggered_listener(self.clip_slot_status)
             self.handle().add_playing_status_listener(self.clip_slot_status)
 
@@ -22,7 +22,7 @@ class LiveClipslot(LiveWrapper):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
-                self.handle().remove_has_clip_listener(self.refresh_hierarchy)
+                self.handle().remove_has_clip_listener(self.refresh_clip)
                 self.handle().remove_is_triggered_listener(self.clip_slot_status)
                 self.handle().remove_playing_status_listener(self.clip_slot_status)
             except (RuntimeError, AttributeError):

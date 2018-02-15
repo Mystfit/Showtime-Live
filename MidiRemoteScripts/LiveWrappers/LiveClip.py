@@ -34,7 +34,7 @@ class LiveClip(LiveWrapper):
 
     @staticmethod
     def build_name(handle, handle_index):
-        return "{0}-{1}".format(handle.name)
+        return handle.name
 
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
@@ -82,11 +82,11 @@ class LiveClip(LiveWrapper):
         self.clip_broadcast_playing_pos_plug = None
 
     def compute(self, plug):
-        if ZstURI.equal(plug.get_URI(), self.clip_trigger_plug.get_URI()):
+        if plug == self.clip_trigger_plug:
             self.recv_trigger()
-        elif ZstURI.equal(plug.get_URI(), self.clip_notes_set_plug.get_URI()):
+        elif plug == self.clip_notes_set_plug:
             self.recv_notes()
-        elif ZstURI.equal(plug.get_URI(), self.clip_broadcast_playing_pos_plug.get_URI()):
+        elif plug == self.clip_broadcast_playing_pos_plug:
             self.recv_broadcast_playing_pos()
 
     def recv_trigger(self):
@@ -123,8 +123,7 @@ class LiveClip(LiveWrapper):
         self.clip_notes_updated_plug.fire()
 
     def playing_position(self):
-        self.clip_playing_position_plug.append(
-            Utils.truncate_float(self.handle().playing_position, 4))
+        self.clip_playing_position_plug.append(Utils.truncate_float(self.handle().playing_position, 4))
         self.clip_playing_position_plug.fire()
 
 

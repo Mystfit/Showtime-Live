@@ -46,14 +46,13 @@ class LiveSong(LiveWrapper):
     def song_time_updated(self):
         self.tick()
         meterLevels = {}
-        for track in LiveTrack.instances():
+        for track_handle in self.handle().tracks:
+            track = LiveWrapper.find_wrapper_from_live_ptr(track_handle._live_ptr)
             if track:
-                # Batch track meters into one message
-                if track.handle():
-                    if track.handle().has_midi_output:
-                        Utils.truncate_float(track.handle().output_meter_level, 4)
-                    else:
-                        meterLevels[track.URI().path()] = Utils.truncate_float(((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5), 4)
+                if track.handle().has_midi_output:
+                    Utils.truncate_float(track.handle().output_meter_level, 4)
+                else:
+                    meterLevels[track.URI().path()] = Utils.truncate_float(((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5), 4)
 
     # ---------
     # Hierarchy
@@ -76,5 +75,7 @@ class LiveSong(LiveWrapper):
     # Utilities
     # ---------
     def tick(self):
-        for track in LiveTrack.instances():
-            track.tick()
+        for track_handle in self.handle().tracks:
+            track = LiveWrapper.find_wrapper_from_live_ptr(track_handle._live_ptr)
+            if track:
+                track.tick()
