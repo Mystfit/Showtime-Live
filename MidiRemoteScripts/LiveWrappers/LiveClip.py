@@ -2,8 +2,7 @@ from LiveWrapper import *
 from ..Utils import Utils
 
 import showtime
-from showtime import Showtime as ZST
-from showtime import ZstURI, ZstPlugDataEventCallback
+from showtime import ZstURI
 
 
 # Wrapper
@@ -17,17 +16,25 @@ class LiveClip(LiveWrapper):
     CLIP_NOTES_SET = "clip_notes_set"
     CLIP_PLAYING_POSITION = "clip_playing_pos"
     CLIP_BROADCAST_PLAYING_POSITION = "clip_broadcast_playing_pos"
-    
+
+
     # -------------------
     # Wrapper definitions
     # -------------------
 
-    def __init__(self, handle, handleindex=None, parent=None):
-        LiveWrapper.__init__(self, handle, handleindex, parent)
+    def __init__(self, name, handle, handleindex=None):
         self.usePlayingPos = True
+        self.clip_status_plug = None
+        self.clip_notes_updated_plug = None
+        self.clip_playing_position_plug = None
+        self.clip_trigger_plug = None
+        self.clip_notes_set_plug = None
+        self.clip_broadcast_playing_pos_plug = None
+        LiveWrapper.__init__(self, handle, handleindex)
 
-    def create_handle_id(self):
-        return "%scl%s" % (self.parent().id(), self.handleindex)
+    @staticmethod
+    def build_name(handle, handle_index):
+        return "{0}-{1}".format(handle.name)
 
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
@@ -74,10 +81,6 @@ class LiveClip(LiveWrapper):
         self.clip_notes_set_plug = None
         self.clip_broadcast_playing_pos_plug = None
 
-        self.clip_trigger_callback = None
-        self.clip_notes_set_callback = None
-        self.clip_broadcast_playing_pos_callback = None
-
     def compute(self, plug):
         if ZstURI.equal(plug.get_URI(), self.clip_trigger_plug.get_URI()):
             self.recv_trigger()
@@ -123,3 +126,11 @@ class LiveClip(LiveWrapper):
         self.clip_playing_position_plug.append(
             Utils.truncate_float(self.handle().playing_position, 4))
         self.clip_playing_position_plug.fire()
+
+
+    # ---------
+    # Hierarchy
+    # ---------
+
+    def refresh_hierarchy(self, postactivate):
+        pass

@@ -6,8 +6,19 @@ from ..Utils import Utils
 
 class LiveSong(LiveWrapper):
 
-    def create_handle_id(self):
-        return "ableton_live_song"
+    def __init__(self, name, handle):
+        LiveWrapper.__init__(self, name, handle, 0)
+        self.returns = ZstContainer("returns")
+        self.tracks = ZstContainer("tracks")
+        self.master = LiveTrack("master", self.handle().master_track, 0)
+        self.add_child(self.returns)
+        self.add_child(self.tracks)
+        self.add_child(self.master)
+
+
+    @staticmethod
+    def build_name(handle, handle_index):
+        return "song"
 
     # -------------------
     # Wrapper definitions
@@ -16,16 +27,16 @@ class LiveSong(LiveWrapper):
         LiveWrapper.create_listeners(self)
         if self.handle():
             self.handle().add_current_song_time_listener(self.song_time_updated)
-            self.handle().add_tracks_listener(self.update_hierarchy)
-            self.handle().add_return_tracks_listener(self.update_hierarchy)
+            self.handle().add_tracks_listener(self.refresh_tracks)
+            self.handle().add_return_tracks_listener(self.refresh_returns)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
                 self.handle().remove_current_song_time_listener(self.song_time_updated)
-                self.handle().remove_tracks_listener(self.update_hierarchy)
-                self.handle().remove_return_tracks_listener(self.update_hierarchy)
+                self.handle().remove_tracks_listener(self.refresh_tracks)
+                self.handle().remove_return_tracks_listener(self.refresh_returns)
             except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove device listener")
 
@@ -42,15 +53,24 @@ class LiveSong(LiveWrapper):
                     if track.handle().has_midi_output:
                         Utils.truncate_float(track.handle().output_meter_level, 4)
                     else:
-                        meterLevels[track.id()] = Utils.truncate_float(((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5), 4)
+                        meterLevels[track.URI().path()] = Utils.truncate_float(((track.handle().output_meter_left + track.handle().output_meter_right) * 0.5), 4)
 
     # ---------
     # Hierarchy
     # ---------
-    def update_hierarchy(self):
-        Log.info("%s - Track list changed" % self.id())
-        tracks = list(itertools.chain(self.handle().tracks, self.handle().return_tracks))
-        LiveWrapper.update_hierarchy(self, LiveTrack, tracks)
+
+    def refresh_tracks(self, postactivate=True):
+        Log.info("{0} - Track list changed".format(self.URI().last().path()))
+        LiveWrapper.update_hierarchy(self.tracks, LiveTrack, self.handle().tracks, postactivate)
+
+    def refresh_returns(self, postactivate=True):
+        Log.info("{0} - Returns list changed".format(self.URI().last().path()))
+        LiveWrapper.update_hierarchy(self.returns, LiveTrack, self.handle().return_tracks, postactivate)
+
+    def refresh_hierarchy(self, postactivate):
+        self.refresh_tracks(postactivate)
+        self.refresh_returns(postactivate)
+
 
     # ---------
     # Utilities

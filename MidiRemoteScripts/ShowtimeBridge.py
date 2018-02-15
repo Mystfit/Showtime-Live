@@ -12,10 +12,22 @@ from LiveWrappers.LiveBrowser import LiveBrowser
 from Logger import Log
 
 import random
+import showtime as ZST
+from showtime import ZstPerformerEvent
+from showtime import ZstEvent
 
-import showtime
-from showtime import Showtime as ZST
-from showtime import ZstComponent
+class JoinStageEvent(ZstPerformerEvent):
+
+    def __init__(self, song):
+        ZstPerformerEvent.__init__(self)
+        self.song = song
+
+    def run_with_performer(self, performer):
+        try:
+            pass
+            # LiveBrowser.add_instance(LiveBrowser(Live.Application.get_application().browser))
+        except Exception as e:
+            Log.error(e)
 
 
 class ShowtimeBridge(ControlSurface):
@@ -25,19 +37,27 @@ class ShowtimeBridge(ControlSurface):
             self.cInstance = c_instance
             self._suppress_send_midi = True
 
+            # Start logging
             Log.set_logger(self.log_message)
             Log.set_log_level(Log.LOG_INFO)
             Log.set_log_network(False)
+
+
+            # Showtime init
             Log.write("-----------------------")
             Log.write("Showtime-Live starting")
             Log.write("Python version " + sys.version)
-            Log.info(sys.version)
+            ZST.init("live", True)
 
-            Log.write("Starting native showtime library")
-            ZST.init()
-            ZST.join("127.0.0.1")
-            LiveSong.add_instance(LiveSong(LiveUtils.getSong()))
-            # LiveBrowser.add_instance(LiveBrowser(Live.Application.get_application().browser))
+            # Create top level song object
+            self.song = LiveSong("song", LiveUtils.getSong())
+            ZST.get_root().add_child(self.song)
+            self.song.refresh_hierarchy(False)
+
+            # Join server
+            self.join_event = JoinStageEvent(self.song)
+            ZST.attach_connection_event_listener(self.join_event)
+            ZST.join_async("127.0.0.1")
 
             # Midi clock to trigger incoming message check
             self.clock = EncoderElement(msg_type=MIDI_CC_TYPE, channel=0, identifier=119, map_mode=Live.MidiMap.MapMode.absolute)
@@ -46,6 +66,7 @@ class ShowtimeBridge(ControlSurface):
             self._suppress_send_midi = False
 
     def showtime_cleanup(self):
+        del self.join_event
         ZST.destroy()
 
     def disconnect(self):
@@ -82,11 +103,10 @@ class ShowtimeBridge(ControlSurface):
 
     def request_loop(self):
         # Handle incoming Showtime events
-        while(ZST.event_queue_size() > 0):
-            ZST.poll_once()
+        ZST.poll_once()
 
         LiveWrapper.process_deferred_actions()
 
         # Tick the song forwards one step
-        if len(LiveSong.instances()) > 0:
-            LiveSong.instances()[0].tick()
+        # if len(LiveSong.instances()) > 0:
+        #     LiveSong.instances()[0].tick()

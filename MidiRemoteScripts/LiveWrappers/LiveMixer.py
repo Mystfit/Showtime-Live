@@ -1,4 +1,3 @@
-from LiveSend import LiveSend
 from LiveWrapper import *
 
 # TODO: Update mixer
@@ -8,10 +7,10 @@ class LiveMixer(LiveWrapper):
     # MIXER_VOLUME_SET = "mixer_volume_set"
     # MIXER_VOLUME_UPDATED = "mixer_volume_updated"
 
+    @staticmethod
+    def build_name(handle, handle_index):
+        return "mixer-{0}".format(handle_index)
 
-    def create_handle_id(self):
-        return "%sm0" % self.parent().id()
-    
     # -------------------
     # Wrapper definitions
     # -------------------
@@ -32,11 +31,10 @@ class LiveMixer(LiveWrapper):
     # Outgoing
     # --------
     def sends_updated(self):
-        self.update_hierarchy()
+        pass
 
     # ---------
     # Utilities
     # ---------
-    def update_hierarchy(self):   
+    def refresh_hierarchy(self, postactivate):
         Log.info("Send list changed")
-        LiveWrapper.update_hierarchy(self, LiveSend, self.handle().sends)

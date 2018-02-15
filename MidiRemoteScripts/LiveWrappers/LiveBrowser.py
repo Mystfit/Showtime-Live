@@ -1,12 +1,16 @@
 from LiveWrapper import *
-from ..Utils import Utils
 from ..Logger import Log
-import showtime
 
 
 class LiveBrowser(LiveWrapper):
 
-    def create_handle_id(self):
+    def __init__(self, name, handle, handleindex):
+        LiveWrapper.__init__(self, name, handle, handleindex)
+        self.name_writable = False
+        self.indexable = False
+
+    @staticmethod
+    def build_name(handle, handle_index):
         return "browser"
 
     def create_listeners(self):
@@ -23,7 +27,7 @@ class LiveBrowser(LiveWrapper):
             except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove browser listener")
 
-    def update_hierarchy(self):
+    def refresh_hierarchy(self):
         browser_categories = {
             # "sounds": self.handle().sounds,
             # "drums": self.handle().drums,

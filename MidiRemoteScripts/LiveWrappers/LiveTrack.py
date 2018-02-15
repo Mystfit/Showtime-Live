@@ -1,7 +1,6 @@
 from LiveClipslot import LiveClipslot
 from LiveClip import LiveClip
 from LiveDevice import LiveDevice
-from LiveSend import LiveSend
 from LiveWrapper import *
 from ..Utils import Utils
 
@@ -15,6 +14,26 @@ class LiveTrack(LiveWrapper):
     # NOTE_ON = "on"
     # NOTE_OFF = "off"
 
+    def __init__(self, name, handle, handleindex):
+        self.lastplaypos = None
+        self.playingnotes = set()
+        LiveWrapper.__init__(self, name, handle, handleindex)
+
+        self.devices = ZstContainer("devices")
+        self.clipslots = ZstContainer("clipslots")
+        self.add_child(self.devices)
+        self.add_child(self.clipslots)
+
+
+    # ------
+    # Naming
+    # ------
+
+    @staticmethod
+    def build_name(handle, handle_index):
+        return handle.name
+
+
     # -------------------
     # Wrapper definitions
     # -------------------
@@ -22,26 +41,32 @@ class LiveTrack(LiveWrapper):
         LiveWrapper.create_listeners(self)
         if self.handle():
             try:
-                self.handle().mixer_device.add_sends_listener(self.update_sends)
-                self.handle().add_devices_listener(self.update_devices)
-                self.handle().add_clip_slots_listener(self.update_clips)
+                self.handle().add_devices_listener(self.refresh_devices)
+            except Exception as e:
+                Log.error("Failed to create track listeners: {0}".format(e))
+
+            try:
                 self.handle().add_fired_slot_index_listener(self.clip_status_fired)
                 self.handle().add_playing_slot_index_listener(self.clip_status_playing)
-            except (RuntimeError, AttributeError):
+                self.handle().add_clip_slots_listener(self.refresh_clipslots)
+            except Exception as e:
                 pass
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
         if self.handle():
             try:
-                self.handle().mixer_device.remove_sends_listener(self.update_sends())
-                self.handle().remove_devices_listener(self.update_devices)
-                self.handle().remove_clip_slots_listener(self.update_clips)
+                self.handle().remove_devices_listener(self.refresh_devices)
+            except Exception as e:
+                Log.error("Failed to remove track listeners: {0}".format(e))
+
+            try:
                 self.handle().remove_fired_slot_index_listener(self.clip_status_fired)
                 self.handle().remove_playing_slot_index_listener(self.clip_status_triggered)
-            except (RuntimeError, AttributeError):
+                self.handle().remove_clip_slots_listener(self.refresh_clips)
+            except Exception as e:
                 pass
-        
+
     # --------
     # Incoming
     # --------
@@ -67,25 +92,32 @@ class LiveTrack(LiveWrapper):
     def output_meter(self):
         self.update(LiveTrack.TRACK_METER, {"peak": Utils.truncate(((self.handle().output_meter_left + self.handle().output_meter_right) * 0.5), 4)})
 
+    def clip_status_fired(self):
+        pass
+
+    def clip_status_playing(self):
+        pass
+
+
+    # ---------
+    # Hierarchy
+    # ---------
+    def refresh_devices(self, postactivate=True):
+        Log.info("{0} - Device list changed".format(self.URI().last().path()))
+        LiveWrapper.update_hierarchy(self.devices, LiveDevice, self.handle().devices, postactivate)
+
+    def refresh_clipslots(self, postactivate=True):
+        Log.info("{0} - Clip slots changed".format(self.URI().last().path()))
+        LiveWrapper.update_hierarchy(self.clipslots, LiveClipslot, self.handle().clip_slots, postactivate)
+
+    def refresh_hierarchy(self, postactivate):
+        self.refresh_devices(postactivate)
+        self.refresh_clipslots(postactivate)
+
+
     # ---------
     # Utilities
     # ---------
-    def update_hierarchy(self):   
-        self.update_devices()
-        self.update_clips()
-        self.update_sends()
-
-    def update_devices(self):
-        Log.info("%s - Device list changed" % self.id())
-        LiveWrapper.update_hierarchy(self, LiveDevice, self.handle().devices)
-
-    def update_clips(self):
-        Log.info("%s - Clip slots changed" % self.id())
-        LiveWrapper.update_hierarchy(self, LiveClipslot, self.handle().clip_slots)
-
-    def update_sends(self):
-        Log.info("%s - Sends changed" % self.id())
-        LiveWrapper.update_hierarchy(self, LiveSend, self.handle().mixer_device.sends)
 
     def tick(self):
         # Find current playing notes for midi clips on this track
@@ -108,9 +140,6 @@ class LiveTrack(LiveWrapper):
 
             if len(notes) > 0:
                 changednotes = []
-
-                if not hasattr(self, "playingnotes"):
-                    self.playingnotes = set()
 
                 # Determine stopped notes
                 Log.info(self.playingnotes)

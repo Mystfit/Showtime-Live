@@ -2,13 +2,20 @@ from LiveWrapper import *
 from ..Utils import Utils
 from ..Logger import Log
 import showtime
-from showtime import Showtime as ZST
-from showtime import ZstURI, ZstPlugDataEventCallback
 
 
 class LiveDeviceParameter(LiveWrapper):
-    def create_handle_id(self):
-        return "%sp%s" % (self.parent().id(), self.handleindex)
+    def __init__(self, name, handle, handleindex):
+        self.value_plug_in = None
+        self.value_plug_out = None
+        LiveWrapper.__init__(self, name, handle, handleindex)
+
+    @staticmethod
+    def build_name(handle, handle_index):
+        return handle.name
+
+    def refresh_hierarchy(self, postactivate):
+        pass
 
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
@@ -16,11 +23,8 @@ class LiveDeviceParameter(LiveWrapper):
             self.handle().add_value_listener(self.value_updated)
 
     def create_plugs(self):
-        try:
-            self.value_plug_out = self.create_output_plug("out", showtime.ZST_FLOAT)
-            self.value_plug_in = self.create_input_plug("in", showtime.ZST_FLOAT)
-        except Exception as e:
-            Log.error("Failed to register plug. Exception was {0}".format(e))
+        self.value_plug_out = self.create_output_plug("out", showtime.ZST_FLOAT)
+        self.value_plug_in = self.create_input_plug("in", showtime.ZST_FLOAT)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
@@ -36,7 +40,6 @@ class LiveDeviceParameter(LiveWrapper):
         self.remove_plug(self.value_plug_in)
         self.value_plug_out = None
         self.value_plug_in = None
-        self.input_callback = None
 
     def compute(self, plug):
         Log.info("LIVE: Plug received message")
@@ -44,9 +47,9 @@ class LiveDeviceParameter(LiveWrapper):
 
     def apply_param_value(self, value):
         self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(value))
-        Log.info("Val:%s on %s" % (self.handle().value, self.id()))
+        Log.info("Val:{0} Plug:{1}".format(self.handle().value, self.URI().path()))
 
     def value_updated(self):
-        Log.info("Sending on native plug: {0}".format(self.handle().value))
+        Log.info("Sending on {0}: {1}".format(self.URI().path(), self.handle().value))
         self.value_plug_out.append_float(self.handle().value)
         self.value_plug_out.fire()

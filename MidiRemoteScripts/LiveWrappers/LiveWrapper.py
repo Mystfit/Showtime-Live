@@ -1,60 +1,41 @@
 import re
 from ..Logger import Log
 
-from showtime import ZstComponent
+import showtime
+from showtime import ZstContainer, ZstURI
 
-
-class LiveWrapper(ZstComponent):
+class LiveWrapper(ZstContainer):
     # Delimiter for handle name id's in Live
     ID_DELIM = "-{"
     ID_END = "}"
     ID_NULL = "no_name"
 
     # References to all instances created of this object
-    _instances = {}
-    _plugs = {}
     _deferred_actions = {}
+
+    _wrapper_ptrs = dict()
+    _ptr_wrappers = dict()
+
 
     # Total ID count
     _id_counter = long(0)
 
     # Constructor
-    def __init__(self, handle, handleindex=None, parent=None):
-        self.handleindex = handleindex
-        self._handle = handle
-        self._parent = parent
-        self._children = set()
-        self._id = self.create_handle_id()
-        self.name = self._id
-        if hasattr(self.handle(), "name"):
-            self.name = LiveWrapper.get_original_name(self.handle().name)
-        if parent:
-            if hasattr(self._parent, "add_child"):
-                self._parent.add_child(self)
-        self.create_listeners()
-        if parent:
-            ZstComponent.__init__(self, "LiveWrapper", str(self.name), parent)
-        else:
-            ZstComponent.__init__(self, "LiveWrapper", str(self.name))
-        self.activate()
-        self.create_plugs()
+    def __init__(self, name, handle, handle_index=None):
 
-    # Cleanup
-    # -------
-    @staticmethod
-    def destroy(instance):
-        if instance.parent():
-            if instance.id() in instance.parent().children():
-                instance.parent().children().remove(instance.id())
-        for child in instance.children():
-            LiveWrapper.destroy(child)
-        instance.children().clear()
-        instance.destroy_listeners()
-        instance.destroy_plugs()
-        try:
-            del instance.__class__.instances_dict()[instance.id()]
-        except KeyError:
-            Log.warn("%s missing. Already deleted." % instance.id())
+        self.handleindex = handle_index
+        self._handle = handle
+
+        ZstContainer.__init__(self, str(name))
+
+        self.create_plugs()
+        self.create_listeners()
+
+
+    def __del__(self):
+        Log.info("In destructor for {}".format(self.URI().path()))
+        ZstContainer.__del__(self)
+        self.destroy_listeners()
 
     def create_listeners(self):
         """Create all listeners for this object"""
@@ -72,170 +53,19 @@ class LiveWrapper(ZstComponent):
             except (RuntimeError, AttributeError):
                 pass
 
-    def update_hierarchy(self, cls=None, livevector=None):
-        """Refreshes the hierarchy of wrappers underneath this wrapper"""
-        if cls is not None and livevector is not None:
-            parentId = self.parent().id() if self.parent() else None
-            cls.remove_child_wrappers(livevector, self.id())
-            cls.create_child_wrappers(self, livevector)
-
     def create_plugs(self):
-        pass
-
-    def destroy_plugs(self):
         pass
 
     def compute(self, plug):
         pass
 
-
-    # Hierarchy
-    # ---------
-    def handle(self):
-        """Get the Live object reference this wrapper controls"""
-        return self._handle
-
-    def parent(self):
-        """Get the parent wrapper of this wrapper"""
-        return self._parent
-
-    @classmethod
-    def create_child_wrappers(cls, parent, livevector):
-        """Create missing child wrappers underneath this wrapper"""
-        totalNew = 0
-        totalExisting = 0
-        for index, handle in enumerate(livevector):
-            wrappers = cls.find_wrapper_by_handle(handle)
-            if len(wrappers):
-                totalExisting += len(wrappers)
-            else:
-                wrapper = cls(handle, index, parent)
-                cls.add_instance(wrapper)
-                totalNew += 1
-                
-        if totalNew or totalExisting:
-            Log.write("ADDING %s: %s added, %s existing." % (cls.__name__, totalNew, totalExisting))
-
-    @classmethod
-    def remove_child_wrappers(cls, livevector, idfilter=None):
-        """Remove wrappers that are missing a live object"""
-
-        localInstances = []
-        for index, handle in enumerate(livevector):
-            # If we receive multiple matching wrappers, we have to
-            # make sure we match the right wrapper to the right handle.
-            # We can use the handle index as a second identifier
-            wrappers = cls.find_wrapper_by_handle(handle)
-            for wrapper in wrappers:
-                if wrapper:
-                    if wrapper.handleindex == index:
-                        localInstances.append(wrapper)
-
-        idlist = [w.id() for w in localInstances if w]
-        instances = [i for i in cls.instances() if i.parent().id() == idfilter] if idfilter else cls.instances()
-        Log.info("Class: %s, Handles: %s, Instances: %s" % (cls.__name__, len(idlist), len(instances)))
-        totalRemoved = 0
-        for wrapper in instances:
-            if wrapper.id() not in idlist:
-                Log.info("Destroying wrapper: {0}".format(wrapper.id()))
-                LiveWrapper.destroy(wrapper)
-                totalRemoved += 1
-        if totalRemoved:
-            Log.write("REMOVING %s: %s removed." % (cls.__name__, totalRemoved))
-
-    def add_child(self, child):
-        """Add a child wrapper to this wrapper"""
-        self._children.add(child)
-
-    def children(self):
-        """Return all children of this wrapper"""
-        return self._children
-
-    # Class instances
-    # ---------------
-    @classmethod
-    def add_instance(cls, instance):
-        """Registers an instance of the class at the class level"""
-        if not cls._instances:
-            cls._instances = {}
-        cls._instances[instance.id()] = instance
-
-        # Only update hierarchy when the instrument has been added
-        instance.update_hierarchy()
-        return instance
-
-    """Returns a list of all instances of this node available"""
-
-    @classmethod
-    def instances(cls):
-        """Returns a list of all instances of this node available"""
-        return cls._instances.values() if cls._instances else []
-
-    @classmethod
-    def instances_dict(cls):
-        return cls._instances
-
-    @classmethod
-    def clear_instances(cls):
-        if cls._instances:
-            cls._instances.clear()
-
-    @classmethod
-    def find_wrapper_by_handle(cls, handle):
-        """Find an reference of this class from a given id"""
-        name = None
-        matching_children = []
-        try:
-            name = handle.name
-        except AttributeError:
-            Log.info("Handle %s has no name attr" % handle)
-            return matching_children
-
-        handleId = LiveWrapper.get_id_from_name(name)
-        if handleId:
-            matching_children.append(cls.find_wrapper_by_id(handleId))
-        else:
-            matching_children = LiveWrapper.find_wrapper_from_handle_parent(handle)
-        return matching_children
+    @staticmethod
+    def build_name(handle, handle_index):
+        raise NotImplementedError("Name builder needs to be implemented by derived class")
 
     @staticmethod
-    def find_wrapper_from_handle_parent(handle):
-        """Find wrapper for a handle from its siblings"""
-        matching_children = []
-        parentId = None
-        try:
-            parentId = LiveWrapper.get_id_from_name(handle.canonical_parent.name)
-        except AttributeError:
-            Log.info("Parent has no name. Handle is %s" % handle.canonical_parent)
-
-        parentWrapper = None
-        for cls in LiveWrapper.__subclasses__():
-            parentWrapper = cls.find_wrapper_by_id(parentId)
-            if parentWrapper:
-                break
-        if parentWrapper:
-            Log.info("Found parent wrapper. Looking for handle in children. Total children: {0}".format(len(parentWrapper.children())))
-            
-            for child in parentWrapper.children():
-                # We check against name and handle ref due to
-                # inconsistencies when comparing Live objects
-                try:
-                    if child.handle():
-                        if child.handle().name == handle.name:
-                            Log.info("Found wrapper {0} inside parent. Name:{1}".format(child.id(), child.handle().name))
-                            matching_children.append(child)
-                except AttributeError:
-                    Log.info("Parent handle %s has no name attr" % handle)
-        else:
-            Log.info("Couldn't find parent wrapper for %s" % parentId)
-
-        return matching_children
-
-    # ID methods
-    # ----------
-    def id(self):
-        """Return the id of this wrapper"""
-        return self._id
+    def sanitize_name(name):
+        return name.replace("/", "-")
 
     def set_handle_name(self, name):
         try:
@@ -244,61 +74,108 @@ class LiveWrapper(ZstComponent):
         except AttributeError:
             Log.warn("Skipping set_handle_name() on " + name)
 
-    def id_updated(self):
-        """Update the stored id if the name in ableton has changed"""
-        self.update_hierarchy()
+    # Hierarchy
+    # ---------
+    def handle(self):
+        """Get the Live object reference this wrapper controls"""
+        return self._handle
 
-    @classmethod
-    def find_wrapper_by_id(cls, wrapperId):
-        try:
-            return cls._instances[wrapperId]
-        except KeyError:
-            pass
-
-        return None
-
-    def create_handle_id(self):
-        """Create a new ID in memory from the handle name"""
-        handleName = None
-        handleId = None
-
-        # If the wrapper doesn't have a name attr we can skip the split step
-        try:
-            handleName = self.handle().name
-        except AttributeError:
-            handleName = LiveWrapper.ID_NULL
-
-        matchedId = LiveWrapper.get_id_from_name(handleName)
-
-        if matchedId:
-            handleId = matchedId
-        else:
-            handleId = LiveWrapper.generate_id()
-            handleName = LiveWrapper.generate_id_name_str(handleName, handleId)
-            Log.warn("!!!TODO: Send name change to Showtime stage!!!")
-            self.defer_action(self.set_handle_name, handleName)
-        return handleId
+    def refresh_hierarchy(self, postactivate):
+        raise NotImplementedError("Refresh hierarchy needs to be implemented in derived wrapper")
 
     @staticmethod
-    def generate_id():
-        LiveWrapper._id_counter += 1
-        return str(LiveWrapper._id_counter)
+    def update_hierarchy(parent, wrappertype, livevector=None, postactivate=False):
+        """Refreshes the hierarchy of wrappers underneath this wrapper"""
+        if livevector is not None:
+            LiveWrapper.remove_child_wrappers(parent, wrappertype, livevector)
+            LiveWrapper.create_child_wrappers(parent, wrappertype, livevector, postactivate)
+
 
     @staticmethod
-    def generate_id_name_str(name, idnum):
-        name = name if name else LiveWrapper.ID_NULL
-        return name + LiveWrapper.ID_DELIM + str(idnum) + LiveWrapper.ID_END
+    def create_child_wrappers(parent, wrappertype, livevector, postactivate):
+        """Create missing child wrappers underneath this wrapper"""
+        totalNew = 0
+        totalMissing = 0
+
+        handles_without_wrappers = LiveWrapper.find_handles_missing_entities(wrappertype, livevector, parent)
+        totalMissing += len(handles_without_wrappers)
+
+        for index, handle in handles_without_wrappers:
+
+            name = LiveWrapper.sanitize_name(wrappertype.build_name(handle, index))
+
+            # TODO: Find existing entities and rename if our name is a duplicate - move to showtime
+            names = [e.URI().last().path() for e in parent.children() if e]
+            duplicates = [e for e in names if e.startswith(name)]
+            rename = len(duplicates) > 0
+            if rename:
+                Log.debug("Found duplicate entities {}".format(",".join([n for n in duplicates])))
+                orig_name = name
+                name = "{0}_{1}".format(name, len(duplicates))
+                Log.debug("Renaming {0} to {1}".format(orig_name, name))
+
+            wrapper = wrappertype(name, handle, index).__disown__()
+            if rename:
+                wrapper.defer_action(wrapper.set_handle_name, name)
+
+            parent.add_child(wrapper)
+
+            Log.debug("Adding {}".format(wrapper.URI().path()))
+
+            # Save memory ID so we can match this wrapper to the handle in the future
+            LiveWrapper._wrapper_ptrs[wrapper.URI().path()] = handle._live_ptr
+
+            #Save reverse index
+            LiveWrapper._ptr_wrappers[handle._live_ptr] = wrapper
+
+            # Add child wrappers, but don't activate them
+            wrapper.refresh_hierarchy(False)
+
+            # If we're at the top of the refresh hierarchy, send the root entity
+            if postactivate:
+                Log.info("Activating {}".format(wrapper.URI().path()))
+                showtime.activate_entity_async(wrapper)
+
+            totalNew += 1
+
+        # if totalNew or totalMissing:
+        #     Log.debug("Adding {0} instances of {1}".format(totalNew, wrappertype.__name__))
 
     @staticmethod
-    def get_id_from_name(name):
-        """Split a handle name into name and id"""
-        idStr = re.search('(?<=' + LiveWrapper.ID_DELIM[0] + '\\' + LiveWrapper.ID_DELIM[1] + ')(.*[^\}])', name)
-        return idStr.group(0) if idStr else None
+    def remove_child_wrappers(parent, wrappertype, livevector):
+        """Remove wrappers that are missing a live object"""
+        totalRemoved = 0
+        removed_entities = LiveWrapper.find_entities_missing_handles(wrappertype, livevector, parent)
+
+        for entity in removed_entities:
+            Log.debug("Removing {}".format(entity.URI().path()))
+            live_ptr = LiveWrapper._wrapper_ptrs[entity.URI().path()]
+            del LiveWrapper._ptr_wrappers[live_ptr]
+            del LiveWrapper._wrapper_ptrs[entity.URI().path()]
+            showtime.deactivate_entity_async(entity)
+            totalRemoved += 1
+
+        # if totalRemoved:
+        #     Log.debug("Removed {1} instances of {0}.".format(wrappertype.__name__, totalRemoved))
 
     @staticmethod
-    def get_original_name(name):
-        nameStr = re.search('^.*(?=' + LiveWrapper.ID_DELIM[0] + ')', name)
-        return nameStr.group(0) if nameStr else name
+    def find_handles_missing_entities(wrappertype, livevector, parent):
+        return [(i,h) for i,h in enumerate(livevector) if h._live_ptr not in LiveWrapper._ptr_wrappers]
+
+    @staticmethod
+    def find_entities_missing_handles(wrappertype, livevector, parent):
+        live_ptrs = [handle._live_ptr for handle in livevector]
+        missing = []
+
+        for entity in parent.children():
+            try:
+                live_ptr = LiveWrapper._wrapper_ptrs[entity.URI().path()]
+                if not live_ptr in live_ptrs:
+                    missing.append(entity)
+            except KeyError:
+                Log.warn("Couldn't find live ptr for entity {0}".format(entity.URI().path()))
+
+        return missing
 
     
     # Deferred actions
