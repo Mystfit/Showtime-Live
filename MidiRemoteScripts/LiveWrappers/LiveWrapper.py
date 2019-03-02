@@ -1,8 +1,8 @@
 import re
 from ..Logger import Log
 
-import showtime
-from showtime import ZstContainer, ZstURI
+import showtime.showtime as ZST
+from showtime.showtime import ZstContainer, ZstURI
 
 class LiveWrapper(ZstContainer):
     # Delimiter for handle name id's in Live
@@ -152,7 +152,7 @@ class LiveWrapper(ZstContainer):
             # If we're at the top of the refresh hierarchy, send the root entity
             if postactivate:
                 Log.info("Activating {}".format(wrapper.URI().path()))
-                showtime.activate_entity_async(wrapper)
+                ZST.activate_entity_async(wrapper)
 
             totalNew += 1
 
@@ -170,7 +170,7 @@ class LiveWrapper(ZstContainer):
             live_ptr = LiveWrapper.find_live_ptr_from_wrapper(entity)
             del LiveWrapper._ptr_wrappers[live_ptr]
             del LiveWrapper._wrapper_ptrs[entity.URI().path()]
-            showtime.deactivate_entity_async(entity)
+            ZST.deactivate_entity_async(entity)
             totalRemoved += 1
 
         # if totalRemoved:

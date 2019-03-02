@@ -1,7 +1,7 @@
 from LiveWrapper import *
 from ..Utils import Utils
 from ..Logger import Log
-import showtime
+import showtime.showtime as ZST
 
 
 class LiveDeviceParameter(LiveWrapper):
@@ -23,8 +23,8 @@ class LiveDeviceParameter(LiveWrapper):
             self.handle().add_value_listener(self.value_updated)
 
     def create_plugs(self):
-        self.value_plug_out = self.create_output_plug("out", showtime.ZST_FLOAT)
-        self.value_plug_in = self.create_input_plug("in", showtime.ZST_FLOAT)
+        self.value_plug_out = self.create_output_plug("out", ZST.ZST_FLOAT)
+        self.value_plug_in = self.create_input_plug("in", ZST.ZST_FLOAT)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)

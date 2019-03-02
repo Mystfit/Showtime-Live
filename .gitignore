@@ -1,5 +1,6 @@
 *.pyc
 .DS_Store
+.dsp_cache
 
 .sublime-project
 .sublime-workspace

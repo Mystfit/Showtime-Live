@@ -12,19 +12,17 @@ from LiveWrappers.LiveBrowser import LiveBrowser
 from Logger import Log
 
 import random
-import showtime as ZST
-from showtime import ZstPerformerEvent
-from showtime import ZstEvent
+import showtime.showtime as ZST
 
-class JoinStageEvent(ZstPerformerEvent):
+class JoinStageEvent(ZST.ZstSessionAdaptor):
 
     def __init__(self, song):
-        ZstPerformerEvent.__init__(self)
+        ZST.ZstSessionAdaptor.__init__(self)
         self.song = song
 
-    def run_with_performer(self, performer):
+    def on_connected_to_stage(self):
         try:
-            pass
+            Log.write("Connected to stage server")
             # LiveBrowser.add_instance(LiveBrowser(Live.Application.get_application().browser))
         except Exception as e:
             Log.error(e)
@@ -56,7 +54,7 @@ class ShowtimeBridge(ControlSurface):
 
             # Join server
             self.join_event = JoinStageEvent(self.song)
-            ZST.attach_connection_event_listener(self.join_event)
+            ZST.add_session_adaptor(self.join_event)
             ZST.join_async("127.0.0.1")
 
             # Midi clock to trigger incoming message check
@@ -64,6 +62,9 @@ class ShowtimeBridge(ControlSurface):
 
             self.refresh_state()
             self._suppress_send_midi = False
+
+    def __del__(self):
+        ZST.destroy()
 
     def disconnect(self):
         self._suppress_send_midi = True

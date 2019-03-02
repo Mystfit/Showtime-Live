@@ -2,7 +2,8 @@ from setuptools import setup, find_packages
 import glob
 import os
 import platform
-from shutil import copytree, rmtree, ignore_patterns
+from shutil import rmtree, ignore_patterns
+from distutils.dir_util import copy_tree
 
 
 def read(fname):
@@ -41,7 +42,7 @@ def install_midi_remote_scripts(custom_install_path=None):
             pass
 
         print("Installing MIDI remote scripts to %s" % installpath)
-        copytree(scriptspath, installpath, ignore=ignore_patterns('*.pyc', 'tmp*'))
+        copy_tree(scriptspath, installpath) #ignore=ignore_patterns('*.pyc', 'tmp*')
 
 
 # Showtime egg installation
@@ -53,7 +54,7 @@ def install_showtime_egg(custom_install_path=None):
         print("Couldn't import Showtime python egg. Skipping egg installation.")
         return
 
-    scriptspath = os.path.dirname(showtime.__file__)
+    scriptspath = os.path.abspath(os.path.join(showtime.__file__, "..", ".."))
 
     liveinstallations = []
     if custom_install_path:
@@ -64,7 +65,6 @@ def install_showtime_egg(custom_install_path=None):
     for path in liveinstallations:
         live_site_packages = os.path.join(path, "Python", "site-packages")
         old_showtime_eggs = glob.glob(os.path.join(live_site_packages, "showtime*"))
-        installpath = os.path.join(live_site_packages, os.path.basename(scriptspath))
 
         try:
             for egg in old_showtime_eggs:
@@ -73,8 +73,20 @@ def install_showtime_egg(custom_install_path=None):
         except OSError:
             pass
 
-        print("Installing Showtime python library to %s" % installpath)
-        copytree(scriptspath, installpath, ignore=ignore_patterns('*.pyc', 'tmp*'))
+        print(os.path.basename(scriptspath))
+        dest = os.path.join(live_site_packages, os.path.basename(scriptspath))
+        
+        print("Installing Showtime python library to %s" % dest)
+        copy_tree(scriptspath, dest) #ignore=ignore_patterns('*.pyc', 'tmp*')
+
+        # Rename .dylib extensions to .so
+        for root, dirs, files in os.walk(dest):
+            for file in files:
+                if file.endswith(".dylib"):
+                    print(os.path.join(root, os.path.splitext(os.path.basename(file))[0] + ".so"))
+                    os.rename(os.path.join(root, file), os.path.join(root, os.path.splitext(os.path.basename(file))[0] + ".so"))
+
+
 
 
 install_midi_remote_scripts()

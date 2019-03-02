@@ -1,8 +1,8 @@
 from LiveWrapper import *
 from ..Utils import Utils
 
-import showtime
-from showtime import ZstURI
+import showtime.showtime as ZST
+from showtime.showtime import ZstURI
 
 
 # Wrapper
@@ -55,15 +55,15 @@ class LiveClip(LiveWrapper):
 
         # Outputs
         # -------
-        self.clip_status_plug = self.create_output_plug("clip_status", showtime.ZST_INT)
-        self.clip_notes_updated_plug = self.create_output_plug("clip_notes_updated", showtime.ZST_INT)
-        self.clip_playing_position_plug = self.create_output_plug("clip_playing_position", showtime.ZST_FLOAT)
+        self.clip_status_plug = self.create_output_plug("clip_status", ZST.ZST_INT)
+        self.clip_notes_updated_plug = self.create_output_plug("clip_notes_updated", ZST.ZST_INT)
+        self.clip_playing_position_plug = self.create_output_plug("clip_playing_position", ZST.ZST_FLOAT)
 
         # Inputs
         # ------
-        self.clip_trigger_plug = self.create_input_plug("clip_trigger", showtime.ZST_INT)
-        self.clip_notes_set_plug = self.create_input_plug("clip_set_notes", showtime.ZST_INT)
-        self.clip_broadcast_playing_pos_plug = self.create_input_plug("clip_broadcast_playing_position", showtime.ZST_INT)
+        self.clip_trigger_plug = self.create_input_plug("clip_trigger", ZST.ZST_INT)
+        self.clip_notes_set_plug = self.create_input_plug("clip_set_notes", ZST.ZST_INT)
+        self.clip_broadcast_playing_pos_plug = self.create_input_plug("clip_broadcast_playing_position", ZST.ZST_INT)
 
     def destroy_plugs(self):
         LiveWrapper.destroy_plugs(self)
