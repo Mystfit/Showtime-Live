@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import glob
 import os
 import platform
-from shutil import rmtree, ignore_patterns
+from shutil import rmtree, ignore_patterns, copyfile
 from distutils.dir_util import copy_tree
 
 
@@ -24,16 +24,10 @@ def find_ableton_dirs():
     return liveinstallations
 
 
-def install_midi_remote_scripts(custom_install_path=None):
+def install_midi_remote_scripts(install_paths=None):
     scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "MidiRemoteScripts")
 
-    liveinstallations = []
-    if custom_install_path:
-        liveinstallations = [os.path.join(custom_install_path, "Resources")]
-    else:
-        liveinstallations = find_ableton_dirs()
-
-    for path in liveinstallations:
+    for path in install_paths:
         installpath = os.path.join(path, "MIDI Remote Scripts", "Showtime")
 
         try:
@@ -47,7 +41,7 @@ def install_midi_remote_scripts(custom_install_path=None):
 
 # Showtime egg installation
 # -------------------------------
-def install_showtime_egg(custom_install_path=None):
+def install_showtime_egg(install_paths=None):
     try:
         import showtime
     except ImportError as e:
@@ -56,13 +50,7 @@ def install_showtime_egg(custom_install_path=None):
 
     scriptspath = os.path.abspath(os.path.join(showtime.__file__, "..", ".."))
 
-    liveinstallations = []
-    if custom_install_path:
-        liveinstallations = [os.path.join(custom_install_path, "Resources")]
-    else:
-        liveinstallations = find_ableton_dirs()
-
-    for path in liveinstallations:
+    for path in install_paths:
         live_site_packages = os.path.join(path, "Python", "site-packages")
         old_showtime_eggs = glob.glob(os.path.join(live_site_packages, "showtime*"))
 
@@ -77,8 +65,9 @@ def install_showtime_egg(custom_install_path=None):
         dest = os.path.join(live_site_packages, os.path.basename(scriptspath))
         
         print("Installing Showtime python library to %s" % dest)
-        copy_tree(scriptspath, dest) #ignore=ignore_patterns('*.pyc', 'tmp*')
-
+        #copy_tree(scriptspath, dest) #ignore=ignore_patterns('*.pyc', 'tmp*')
+        copyfile(scriptspath, dest)
+        
         # Rename .dylib extensions to .so
         for root, dirs, files in os.walk(dest):
             for file in files:
@@ -87,9 +76,27 @@ def install_showtime_egg(custom_install_path=None):
                     os.rename(os.path.join(root, file), os.path.join(root, os.path.splitext(os.path.basename(file))[0] + ".so"))
 
 
+def install_ext_libs(install_paths=None):
+    scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "external_libs")
+    for path in install_paths:
+        live_site_packages = os.path.join(path, "Python", "site-packages")
+
+        print("Installing External Python libs to %s" % live_site_packages)
+        copy_tree(scriptspath, live_site_packages) 
 
 
-install_midi_remote_scripts()
-install_showtime_egg()
+custom_install_path = None
+liveinstallations = []
+
+if custom_install_path:
+    liveinstallations = [os.path.join(custom_install_path, "Resources")]
+else:
+    liveinstallations = find_ableton_dirs()
+
+install_midi_remote_scripts(liveinstallations)
+if platform.system() == "Darwin":
+    install_showtime_egg(liveinstallations)
+if platform.system() == "Windows":
+    install_ext_libs(liveinstallations)
 
 print("Installed Showtime-Live")
