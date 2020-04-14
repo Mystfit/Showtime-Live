@@ -11,7 +11,15 @@ from Tkinter import *
 from optparse import OptionParser
 from shutil import copytree, rmtree, ignore_patterns
 
+import rpyc
+from rpyc.core import SlaveService
+from rpyc.utils.server import ThreadedServer
+from rpyc.utils.classic import DEFAULT_SERVER_PORT, DEFAULT_SERVER_SSL_PORT
+from rpyc.utils.helpers import classpartial
+
 import showtime.showtime as ZST
+
+DEFAULT_CLIENT_NAME = "LiveBridge"
 
 
 # MIDI Remote Script installation
@@ -88,6 +96,26 @@ class EventLoop(threading.Thread):
             self.client.poll_once()
             time.sleep(1)
 
+class RPCLoop(threading.Thread):
+    def __init__(self, bridge):
+        threading.Thread.__init__(self)
+        self.bridge = bridge
+        self.setDaemon(True)
+
+    def run(self):
+        self.bridge.start()
+
+
+class LiveZSTService(rpyc.Service):
+    def __init__(self, client):
+        self.zst_client = client
+
+    def exposed_get_client(self):
+        return self.zst_client
+
+    def exposed_get_module(self):
+        return ZST
+
 # UI
 # -------------------
 class Display(Frame):
@@ -120,15 +148,25 @@ class Display(Frame):
         Label(self, text="Discovered servers").grid(row=3, column=0, sticky=E, padx=2, pady=2)
         self.serverListVar = StringVar(self)
         self.serverListVar.set("No servers found") 
-        self.serverListOptions = OptionMenu(self, self.serverListVar, "")
-        self.serverListOptions.config(state=DISABLED)
-        self.serverListOptions.grid(row=3, column=1, sticky=(E, W), padx=2, pady=2)
+        self.serverList = Listbox(self, selectmode=SINGLE, height=4, listvariable="a b c")
+        self.serverList.grid(row=3, column=1, sticky=(E, W), padx=2, pady=2)
+        self.serverList.bind('<<ListboxSelect>>', self.click_serverlist)
+
+        # Server address
         Label(self, text="Server address").grid(row=4, column=0, sticky=E, padx=2, pady=2)
         self.serverAddressVar = StringVar(self)
         self.serverAddressEntry = Entry(self, textvariable=self.serverAddressVar)
         self.serverAddressEntry.grid(sticky=(N, E, W), row=4, column=1, padx=2, pady=2)
+        
+        # Client options
+        Label(self, text="Client name").grid(row=5, column=0, sticky=E, padx=2, pady=2)
+        self.clientNameVar = StringVar(self, DEFAULT_CLIENT_NAME)
+        self.clientNameEntry = Entry(self, textvariable=self.clientNameVar)
+        self.clientNameEntry.grid(row=5, column=1, sticky=(N, E, W), padx=2, pady=2)
+
+        # Connection button
         self.connectBtn = Button(self, text='Connect', command=self.connectBtn_pressed)
-        self.connectBtn.grid(row=5, column=1, sticky=(N, E, W), pady=4)
+        self.connectBtn.grid(row=6, column=1, sticky=(N, E, W), pady=4)
 
         # Server log
         self.output = Text(self)
@@ -150,25 +188,32 @@ class Display(Frame):
         self.client = client
 
     def connectBtn_pressed(self):
+        self.client.get_root().set_name(self.clientNameVar.get())
         self.client.join(self.serverAddressVar.get())
 
     def refresh_discovered_servers(self, client):
         self.serverListVar.set('')
-        self.serverListOptions["menu"].delete(0, END)
+        self.serverList.delete(0, END)
         servers = client.get_discovered_servers()
         if servers:
-            self.serverListOptions.config(state=NORMAL)
+            self.serverList.config(state=NORMAL)
             if not self.serverListVar.get():
-                self.select_server(servers[0])
+                self.select_server(servers[0].name)
         else:
             self.serverListVar.set("No servers found") 
-            self.serverListOptions.config(state=DISABLED)
+            self.serverList.config(state=DISABLED)
         for server in servers:
-            self.serverListOptions["menu"].add_command(label=server.name, command=lambda value=server: self.select_server(server))
+            self.serverList.insert(END, server.name)
 
+    def click_serverlist(self, event):
+        selected_index = self.serverList.curselection()
+        server_name = self.serverList.get(self.serverList.curselection())
+        if server_name:
+            self.select_server(server_name)
 
-    def select_server(self, server):
-        self.serverListVar.set(server.name)
+    def select_server(self, server_name):
+        self.serverListVar.set(server_name)
+        server = self.client.get_discovered_server(server_name)
         self.serverAddressVar.set(server.address)
 
     def create_midi_loopback_options(self, midirouter):
@@ -223,7 +268,7 @@ class LiveScriptInstallDialog(tkSimpleDialog.Dialog):
         self.entry.grid(row=0, column=1, sticky=(E, W), padx=2)
         self.grid_columnconfigure(1, weight=1)
 
-        self.entry.insert(0, 'C:\\ProgramData\Ableton\Live 10.x.x')
+        self.entry.insert(0, 'C:\\ProgramData\\Ableton\\')
         self.browseBtn = Button(master, text="Browse", command=self.askdirectory)
         self.browseBtn.grid(row=1, column=1, sticky=W)
         return self.entry  # initial focus
@@ -231,7 +276,7 @@ class LiveScriptInstallDialog(tkSimpleDialog.Dialog):
     def askdirectory(self):
         """Returns a selected directory name."""
         options = {
-            'initialdir': 'C:\\ProgramData\Ableton\'',
+            'initialdir': 'C:\\ProgramData\\Ableton\'',
             'mustexist': False,
             'parent': self,
             'title': 'Ableton Live Directory'
@@ -277,13 +322,12 @@ class ShowtimeLiveBridgeClient:
         (options, args) = parser.parse_args()
 
         # Create GUI
-        self.gui = None
         if not options.useCLI:
-            root = Tk()
-            self.gui = Display(root)
+            self.create_gui()
 
         # Create client
         self.create_client()
+        self.create_bridge()
         self.gui.register_client(self.client)
 
         # Check if midi remote scripts are installed correctly
@@ -313,13 +357,12 @@ class ShowtimeLiveBridgeClient:
 
         # Enter into the idle loop to handle messages
         try:
-            if options.useCLI:
-                while 1:
-                    time.sleep(1)
-            else:
+            if not options.useCLI:
                 self.gui.after(50, self.gui.write_log)
                 self.gui.mainloop()
-
+            else:
+                while 1:
+                    time.sleep(1)
         except KeyboardInterrupt:
             print("\nExiting...")
 
@@ -327,20 +370,30 @@ class ShowtimeLiveBridgeClient:
         if(hasattr(self, "server")):
             self.server.destroy()
 
-        self.event_loop.stop()
+        self.client_loop.stop()
         self.client.destroy()
 
     def create_client(self):
         self.client = ZST.ShowtimeClient()
-        self.client.init("LiveBridge", True)
+        self.client.init(DEFAULT_CLIENT_NAME, True)
         self.connection_CB = ConnectionCallbacks(self.gui)
         self.client.add_connection_adaptor(self.connection_CB)
+        self.client_loop = EventLoop(self.client)
+        self.client_loop.start()
 
-        # Set up event loop
-        self.event_loop = EventLoop(self.client)
-        self.event_loop.start()
+    def create_gui(self):
+        self.root = Tk()
+        self.gui = Display(self.root)
 
-        return self.client
+    def create_bridge(self):
+        service = classpartial(LiveZSTService, self.client)
+        self.bridge = ThreadedServer(service, port=DEFAULT_SERVER_PORT, protocol_config={
+            'allow_public_attrs': True
+        })
+        self.bridge_loop = RPCLoop(self.bridge)
+        self.bridge_loop.start()
+        print("RPyC server available at localhost:{}".format(DEFAULT_SERVER_PORT))
+
 
 def main():
     ShowtimeLiveBridgeClient()
