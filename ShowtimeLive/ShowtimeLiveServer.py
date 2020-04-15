@@ -1,15 +1,13 @@
 #!python
 import Queue
-import glob
 import os
-import platform
 import time
 import threading
+from optparse import OptionParser
+
 import tkFileDialog
 import tkSimpleDialog
 from Tkinter import *
-from optparse import OptionParser
-from shutil import copytree, rmtree, ignore_patterns
 
 import rpyc
 from rpyc.core import SlaveService
@@ -17,46 +15,10 @@ from rpyc.utils.server import ThreadedServer
 from rpyc.utils.classic import DEFAULT_SERVER_PORT, DEFAULT_SERVER_SSL_PORT
 from rpyc.utils.helpers import classpartial
 
+import scriptinstaller
 import showtime.showtime as ZST
 
 DEFAULT_CLIENT_NAME = "LiveBridge"
-
-
-# MIDI Remote Script installation
-# -------------------------------
-def find_ableton_dirs():
-    liveinstallations = []
-    if platform.system() == "Windows":
-        liveinstallations = glob.glob(os.path.abspath(os.path.join(os.getenv("PROGRAMDATA"), "Ableton", "Live*")) + "*")
-        liveinstallations = [os.path.join(path, "Resources") for path in liveinstallations]
-
-    elif platform.system() == "Darwin":
-        liveinstallations = glob.glob(os.path.abspath(os.path.join(os.path.sep, "Applications", "Ableton Live")) + "*")
-        liveinstallations = [os.path.join(path, "Contents", "App-Resources") for path in liveinstallations]
-
-    return liveinstallations
-
-
-def install_midi_remote_scripts(custom_install_path=None):
-    scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "MidiRemoteScripts")
-
-    liveinstallations = []
-    if custom_install_path:
-        liveinstallations = [os.path.join(custom_install_path, "Resources")]
-    else:
-        liveinstallations = find_ableton_dirs()
-
-    for path in liveinstallations:
-        installpath = os.path.join(path, "MIDI Remote Scripts", "Showtime")
-
-        try:
-            rmtree(installpath)
-        except OSError:
-            pass
-
-        print("Installing MIDI remote scripts to %s" % installpath)
-        copytree(scriptspath, installpath, ignore=ignore_patterns('*.pyc', 'tmp*'))
-
 
 class ConnectionCallbacks(ZST.ZstConnectionAdaptor):
     def __init__(self, client_gui):
@@ -139,7 +101,7 @@ class Display(Frame):
 
         # Install script buttons
         Label(self, text="Script installation").grid(row=1, column=0, sticky=E, padx=2, pady=4)
-        self.installScriptsBtn = Button(self, text="Install Live scripts", command=install_midi_remote_scripts)
+        self.installScriptsBtn = Button(self, text="Install Live scripts", command=self.install_scripts_pressed)
         self.installScriptsBtn.grid(row=1, column=1, sticky=(N, E, W), padx=2, pady=2)
         self.customPathInstallScriptsBtn = Button(self, text="Install Live scripts to custom location", command=self.open_custom_install_dialog)
         self.customPathInstallScriptsBtn.grid(row=2, column=1, sticky=(N, E, W), padx=2, pady=2)
@@ -171,8 +133,6 @@ class Display(Frame):
         # Server log
         self.output = Text(self)
         self.output.grid(row=7, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
-        sys.stdout = self
-        sys.stderr = self
         self.consoleQueue = Queue.Queue()
 
         scrollbar = Scrollbar(self)
@@ -188,8 +148,15 @@ class Display(Frame):
         self.client = client
 
     def connectBtn_pressed(self):
-        self.client.get_root().set_name(self.clientNameVar.get())
-        self.client.join(self.serverAddressVar.get())
+        if self.serverAddressVar.get():
+            self.client.get_root().set_name(self.clientNameVar.get())
+            self.client.join(self.serverAddressVar.get())
+        else:
+            print("No server address specified.")
+
+    def install_scripts_pressed(self):
+        scriptinstaller.install_midi_remote_scripts()
+        scriptinstaller.install_dependencies()
 
     def refresh_discovered_servers(self, client):
         self.serverListVar.set('')
@@ -207,6 +174,8 @@ class Display(Frame):
 
     def click_serverlist(self, event):
         selected_index = self.serverList.curselection()
+        if not selected_index:
+            return
         server_name = self.serverList.get(self.serverList.curselection())
         if server_name:
             self.select_server(server_name)
@@ -290,7 +259,9 @@ class LiveScriptInstallDialog(tkSimpleDialog.Dialog):
         self.entry.insert(0, path)
 
     def apply(self):
-        install_midi_remote_scripts(str(self.entry.get()))
+        path = scriptinstaller.ableton_resource_dir(os.path.normpath(self.entry.get()))
+        scriptinstaller.install_dependencies([path])
+        scriptinstaller.install_midi_remote_scripts([path])
 
     def validate(self):
         return os.path.isdir(str(self.entry.get()))
@@ -331,29 +302,31 @@ class ShowtimeLiveBridgeClient:
         self.gui.register_client(self.client)
 
         # Check if midi remote scripts are installed correctly
-        installed_midi_remote_scripts = find_ableton_dirs()
+        live_resource_dirs = scriptinstaller.find_ableton_resource_dirs()
         success = True
 
-        print("\n-------------------------------------")
-        print("Checking if Ableton Live is installed")
-        print("Found %s instances of Ableton Live." % len(installed_midi_remote_scripts))
-        for path in installed_midi_remote_scripts:
+        if options.installScripts:
+            scriptinstaller.install_midi_remote_scripts(options.liveCustomFolder)
+
+        if not options.useCLI:
+            # Redirect stdout to GUI log
+            sys.stdout = self.gui
+            sys.stderr = self.gui
+            self.gui.update()
+
+        print("Checking if Ableton Live is installed.")
+        print("Found {} instance{} of Ableton Live.".format(len(live_resource_dirs), "s" if len(live_resource_dirs) > 1 else ""))
+        for path in live_resource_dirs:
             script_path = os.path.join(path, "MIDI Remote Scripts", "Showtime")
             if not os.path.isdir(script_path):
                 success = False
-                print("Showtime-Live scripts not installed in %s" % script_path)
+                print("Showtime-Live scripts not installed in {}.".format(script_path))
 
         if success:
-            print("Showtime-Live scripts already installed")
+            print("Showtime-Live scripts found.")
         else:
             print("Some local Ableton Live installations do not have the Showtime-Live Midi Remote Scripts installed.")
             print("Either click the \"Install Scripts\" button or restart with the command line flag --install.")
-
-        if options.installScripts:
-            install_midi_remote_scripts(options.liveCustomFolder)
-
-        if not options.useCLI:
-            self.gui.update()
 
         # Enter into the idle loop to handle messages
         try:

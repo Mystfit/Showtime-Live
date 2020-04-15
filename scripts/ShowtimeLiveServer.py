@@ -1,6 +1,6 @@
 #!python
-import Showtime_Live.ShowtimeLiveServer
+from ShowtimeLive import ShowtimeLiveServer
 
 
 if __name__ == "__main__":
-    server = Showtime_Live.ShowtimeLiveServer.ShowtimeLiveServer()
+    server =ShowtimeLiveServer.ShowtimeLiveServer()
