@@ -1,7 +1,7 @@
 from LiveWrapper import *
 from ..Utils import Utils
 from ..Logger import Log
-import showtime.showtime as ZST
+from ..showtime import API as ZST
 
 
 class LiveDeviceParameter(LiveWrapper):
@@ -23,8 +23,8 @@ class LiveDeviceParameter(LiveWrapper):
             self.handle().add_value_listener(self.value_updated)
 
     def create_plugs(self):
-        self.value_plug_out = self.create_output_plug("out", ZST.ZST_FLOAT)
-        self.value_plug_in = self.create_input_plug("in", ZST.ZST_FLOAT)
+        self.value_plug_out = ZST.ZstOutputPlug("out", ZST.ZstValueType_FloatList)
+        self.value_plug_in = ZST.ZstOutputPlug("in", ZST.ZstValueType_FloatList)
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
@@ -47,9 +47,9 @@ class LiveDeviceParameter(LiveWrapper):
 
     def apply_param_value(self, value):
         self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(value))
-        Log.info("Val:{0} Plug:{1}".format(self.handle().value, self.URI().path()))
+        Log.info("Val:{0} Plug:{1}".format(self.handle().value, self.component.URI().path()))
 
     def value_updated(self):
-        Log.info("Sending on {0}: {1}".format(self.URI().path(), self.handle().value))
+        Log.info("Sending on {0}: {1}".format(self.component.URI().path(), self.handle().value))
         self.value_plug_out.append_float(self.handle().value)
         self.value_plug_out.fire()

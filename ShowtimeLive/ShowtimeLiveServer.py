@@ -9,11 +9,11 @@ import tkFileDialog
 import tkSimpleDialog
 from Tkinter import *
 
-import rpyc
-from rpyc.core import SlaveService
+from services import LiveZSTService
+from services import RPCLoop
+from rpyc.utils.helpers import classpartial
 from rpyc.utils.server import ThreadedServer
 from rpyc.utils.classic import DEFAULT_SERVER_PORT, DEFAULT_SERVER_SSL_PORT
-from rpyc.utils.helpers import classpartial
 
 import scriptinstaller
 import showtime.showtime as ZST
@@ -25,10 +25,10 @@ class ConnectionCallbacks(ZST.ZstConnectionAdaptor):
         ZST.ZstConnectionAdaptor.__init__(self)
         self.gui = client_gui
 
-    def on_connected_to_stage(self, client, server):
+    def on_connected_to_server(self, client, server):
         print("Connected to server: {}".format(server.address))
 
-    def on_disconnected_from_stage(self, client, server):
+    def on_disconnected_from_server(self, client, server):
         print("Disconnected from server: {}".format(server.name))
 
     def on_server_discovered(self, client, server):
@@ -39,7 +39,7 @@ class ConnectionCallbacks(ZST.ZstConnectionAdaptor):
         print("Lost server beacon: {}".format(server.name))
         self.gui.refresh_discovered_servers(client)
 
-    def on_synchronised_with_stage(self, client, server):
+    def on_synchronised_graph(self, client, server):
         pass
 
 
@@ -58,25 +58,6 @@ class EventLoop(threading.Thread):
             self.client.poll_once()
             time.sleep(1)
 
-class RPCLoop(threading.Thread):
-    def __init__(self, bridge):
-        threading.Thread.__init__(self)
-        self.bridge = bridge
-        self.setDaemon(True)
-
-    def run(self):
-        self.bridge.start()
-
-
-class LiveZSTService(rpyc.Service):
-    def __init__(self, client):
-        self.zst_client = client
-
-    def exposed_get_client(self):
-        return self.zst_client
-
-    def exposed_get_module(self):
-        return ZST
 
 # UI
 # -------------------
@@ -130,13 +111,17 @@ class Display(Frame):
         self.connectBtn = Button(self, text='Connect', command=self.connectBtn_pressed)
         self.connectBtn.grid(row=6, column=1, sticky=(N, E, W), pady=4)
 
+        # Disconnection button
+        self.disconnectBtn = Button(self, text='Disconnect', command=self.disconnectBtn_pressed)
+        self.disconnectBtn.grid(row=7, column=1, sticky=(N, E, W), pady=4)
+
         # Server log
         self.output = Text(self)
-        self.output.grid(row=7, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
+        self.output.grid(row=8, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
         self.consoleQueue = Queue.Queue()
 
         scrollbar = Scrollbar(self)
-        scrollbar.grid(row=7, column=1, rowspan=5, sticky=(N, E, S), pady=2)
+        scrollbar.grid(row=8, column=1, rowspan=5, sticky=(N, E, S), pady=2)
         self.output.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.output.yview)
  
@@ -153,6 +138,10 @@ class Display(Frame):
             self.client.join(self.serverAddressVar.get())
         else:
             print("No server address specified.")
+
+    def disconnectBtn_pressed(self):
+         self.client.leave()
+         print("Disconnected from server")
 
     def install_scripts_pressed(self):
         scriptinstaller.install_midi_remote_scripts()
@@ -315,7 +304,7 @@ class ShowtimeLiveBridgeClient:
             self.gui.update()
 
         print("Checking if Ableton Live is installed.")
-        print("Found {} instance{} of Ableton Live.".format(len(live_resource_dirs), "s" if len(live_resource_dirs) > 1 else ""))
+        print("Found {} installed instance{} of Ableton Live.".format(len(live_resource_dirs), "s" if len(live_resource_dirs) > 1 else ""))
         for path in live_resource_dirs:
             script_path = os.path.join(path, "MIDI Remote Scripts", "Showtime")
             if not os.path.isdir(script_path):
@@ -360,8 +349,14 @@ class ShowtimeLiveBridgeClient:
 
     def create_bridge(self):
         service = classpartial(LiveZSTService, self.client)
-        self.bridge = ThreadedServer(service, port=DEFAULT_SERVER_PORT, protocol_config={
-            'allow_public_attrs': True
+        self.bridge = ThreadedServer(
+            service, 
+            port=DEFAULT_SERVER_PORT, 
+            protocol_config={
+            'allow_all_attrs': True,
+            "allow_setattr": True,
+            "allow_delattr": True,
+            "logger": sys.stdout
         })
         self.bridge_loop = RPCLoop(self.bridge)
         self.bridge_loop.start()

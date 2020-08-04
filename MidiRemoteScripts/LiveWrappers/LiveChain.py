@@ -5,8 +5,11 @@ class LiveChain(LiveWrapper):
 
     def __init__(self, name, handle, handleindex):
         LiveWrapper.__init__(self, name, handle, handleindex)
-        self.devices = ZstContainer("devices")
-        self.add_child(self.devices)
+        
+    def on_registered(self, entity):
+        LiveWrapper.on_registered(self, entity)
+        self.devices = ZST.ZstComponent("devices")
+        self.component.add_child(self.devices)
 
     @staticmethod
     def build_name(handle, handle_index):
@@ -25,11 +28,8 @@ class LiveChain(LiveWrapper):
             except (RuntimeError, AttributeError):
                 Log.warn("Couldn't remove device listener")
 
-    def create_plugs(self):
-        pass
-
     def refresh_devices(self, postactivate=True):
-        Log.info("{0} - Chain device list changed".format(self.URI().last().path()))
+        Log.info("{0} - Chain device list changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.devices, LiveDevice.LiveDevice, self.handle().devices, postactivate)
 
     def refresh_hierarchy(self, postactivate):

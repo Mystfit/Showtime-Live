@@ -1,19 +1,25 @@
+import itertools
+
 from LiveWrapper import *
 from LiveTrack import LiveTrack
-import itertools
+
+from ..showtime import API as ZST
 from ..Utils import Utils
 
 
 class LiveSong(LiveWrapper):
-
     def __init__(self, name, handle):
         LiveWrapper.__init__(self, name, handle, 0)
-        self.returns = ZstContainer("returns")
-        self.tracks = ZstContainer("tracks")
+        self.returns = ZST.ZstComponent("returns")
+        self.tracks = ZST.ZstComponent("tracks")
         self.master = LiveTrack("master", self.handle().master_track, 0)
-        self.add_child(self.returns)
-        self.add_child(self.tracks)
-        self.add_child(self.master)
+
+    def on_registered(self, entity):
+        Log.write("Song registered")
+        LiveWrapper.on_registered(self, entity)
+        self.component.add_child(self.returns)
+        self.component.add_child(self.tracks)
+        self.component.add_child(self.master.component)
 
 
     @staticmethod
@@ -59,11 +65,11 @@ class LiveSong(LiveWrapper):
     # ---------
 
     def refresh_tracks(self, postactivate=True):
-        Log.info("{0} - Track list changed".format(self.URI().last().path()))
+        Log.info("{0} - Track list changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.tracks, LiveTrack, self.handle().tracks, postactivate)
 
     def refresh_returns(self, postactivate=True):
-        Log.info("{0} - Returns list changed".format(self.URI().last().path()))
+        Log.info("{0} - Returns list changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.returns, LiveTrack, self.handle().return_tracks, postactivate)
 
     def refresh_hierarchy(self, postactivate):

@@ -16,7 +16,6 @@ class LiveBrowser(LiveWrapper):
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
         if self.handle():
-            Log.info(self.handle())
             self.handle().add_full_refresh_listener(self.update_hierarchy)
 
     def destroy_listeners(self):

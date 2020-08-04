@@ -1,19 +1,23 @@
 from LiveWrapper import *
 from LiveDeviceParameter import LiveDeviceParameter
 import LiveChain
+from ..showtime import API as ZST
 
 
 class LiveDevice(LiveWrapper):
 
     def __init__(self, name, handle, handleindex):
         LiveWrapper.__init__(self, name, handle, handleindex)
-        self.parameters = ZstContainer("parameters")
-        self.add_child(self.parameters)
-
         self.chains = None
+        
+    def on_registered(self, entity):
+        LiveWrapper.on_registered(self, entity)
+        self.parameters = ZST.ZstComponent("parameters")
+        self.component.add_child(self.parameters)
+
         if self.handle().can_have_chains:
-            self.chains = ZstContainer("chains")
-            self.add_child(self.chains)
+            self.chains = ZST.ZstComponent("chains")
+            self.component.add_child(self.chains)
 
     @staticmethod
     def build_name(handle, handle_index):
@@ -48,11 +52,11 @@ class LiveDevice(LiveWrapper):
     # ---------
 
     def refresh_parameters(self, postactivate=True):
-        Log.info("{0} - Parameter list changed".format(self.URI().last().path()))
+        Log.info("{0} - Parameter list changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.parameters, LiveDeviceParameter, self.handle().parameters, postactivate)
 
     def refresh_chains(self, postactivate=True):
-        Log.info("{0} - Chain list changed".format(self.URI().last().path()))
+        Log.info("{0} - Chain list changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.chains, LiveChain.LiveChain, self.handle().chains, postactivate)
 
     def refresh_hierarchy(self, postactivate):

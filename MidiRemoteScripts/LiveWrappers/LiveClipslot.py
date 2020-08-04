@@ -35,7 +35,7 @@ class LiveClipslot(LiveWrapper):
 
     def refresh_clip(self, postactivate=True):
         clip = [self.handle().clip] if self.handle().clip else []
-        LiveWrapper.update_hierarchy(self, LiveClip, clip, postactivate)
+        LiveWrapper.update_hierarchy(self.component, LiveClip, clip, postactivate)
 
     def refresh_hierarchy(self, postactivate):
         self.refresh_clip(postactivate)

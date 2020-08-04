@@ -3,6 +3,7 @@ from LiveClip import LiveClip
 from LiveDevice import LiveDevice
 from LiveWrapper import *
 from ..Utils import Utils
+from ..showtime import API as ZST
 
 
 class LiveTrack(LiveWrapper):
@@ -19,11 +20,12 @@ class LiveTrack(LiveWrapper):
         self.playingnotes = set()
         LiveWrapper.__init__(self, name, handle, handleindex)
 
-        self.devices = ZstContainer("devices")
-        self.clipslots = ZstContainer("clipslots")
-        self.add_child(self.devices)
-        self.add_child(self.clipslots)
-
+    def on_registered(self, entity):
+        LiveWrapper.on_registered(self, entity)
+        self.devices = ZST.ZstComponent("devices")
+        self.clipslots = ZST.ZstComponent("clipslots")
+        self.component.add_child(self.devices)
+        self.component.add_child(self.clipslots)
 
     # ------
     # Naming
@@ -103,11 +105,11 @@ class LiveTrack(LiveWrapper):
     # Hierarchy
     # ---------
     def refresh_devices(self, postactivate=True):
-        Log.info("{0} - Device list changed".format(self.URI().last().path()))
+        Log.write("{0} - Device list changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.devices, LiveDevice, self.handle().devices, postactivate)
 
     def refresh_clipslots(self, postactivate=True):
-        Log.info("{0} - Clip slots changed".format(self.URI().last().path()))
+        Log.write("{0} - Clip slots changed".format(self.component.URI().last().path()))
         LiveWrapper.update_hierarchy(self.clipslots, LiveClipslot, self.handle().clip_slots, postactivate)
 
     def refresh_hierarchy(self, postactivate):

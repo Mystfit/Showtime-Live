@@ -1,10 +1,8 @@
-# try:
-#     from ShowtimeBridge import ShowtimeBridge
-# except ImportError, e:
-#     pass
 import sys
 import os
 
+# Live's site-packages folder isn't on the path by default
+sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "Python", "site-packages")))
 
 def create_instance(c_instance):
     try:   
@@ -15,7 +13,6 @@ def create_instance(c_instance):
         bootstrap = ControlSurface(c_instance)
         bootstrap.log_message("Couldn't build Showtime. Falling back to generic ControlSurface for logging")
         bootstrap.log_message(err)
-        bootstrap.log_message("Python version " + sys.version)
         import traceback
         import os.path
         top = traceback.extract_tb(sys.exc_info()[2])[-1]

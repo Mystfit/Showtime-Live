@@ -1,11 +1,12 @@
 import re
 from ..Logger import Log
 
-import showtime.showtime as ZST
-from showtime.showtime import ZstContainer, ZstURI
+from ..showtime import *
+from ..showtime import API as ZST
 
-class LiveWrapper(ZstContainer):
-    # Delimiter for handle name id's in Live
+
+class LiveWrapper(object):
+    # Delimiter for handle name ids in Live
     ID_DELIM = "-{"
     ID_END = "}"
     ID_NULL = "no_name"
@@ -22,19 +23,30 @@ class LiveWrapper(ZstContainer):
 
     # Constructor
     def __init__(self, name, handle, handle_index=None):
-
         self.handleindex = handle_index
         self._handle = handle
 
-        ZstContainer.__init__(self, str(name))
+        # Create Showtime component
+        self.component = ZST.ZstComponent(str(name))
+        self.component.entity_events().entity_registered.add(self.on_registered)
 
-        self.create_plugs()
+        # Register Live listeners
         self.create_listeners()
 
+    # Redirect any missing attributes to the Showtime component
+    # def __getattr__(self, name):
+    #     # Log.write("Looking for attr {} in ZstComponent".format(name))
+    #     if hasattr(self.component, name):
+    #         return getattr(self.component, name)
+    #     raise AttributeError
+
+    def on_registered(self, entity):
+        self.create_plugs()
 
     def __del__(self):
-        Log.info("In destructor for {}".format(self.URI().path()))
-        ZstContainer.__del__(self)
+        self.component.entity_events().entity_registered.remove(self.on_registered)
+
+        ZST.ZstComponent.__del__(self)
         self.destroy_listeners()
 
     def create_listeners(self):
@@ -52,6 +64,9 @@ class LiveWrapper(ZstContainer):
                 self.handle().remove_name_listener(self.id_updated)
             except (RuntimeError, AttributeError):
                 pass
+
+    def id_updated(self):
+        pass
 
     def create_plugs(self):
         pass
@@ -123,25 +138,27 @@ class LiveWrapper(ZstContainer):
             name = LiveWrapper.sanitize_name(wrappertype.build_name(handle, index))
 
             # TODO: Find existing entities and rename if our name is a duplicate - move to showtime
-            names = [e.URI().last().path() for e in parent.children() if e]
-            duplicates = [e for e in names if e.startswith(name)]
-            rename = len(duplicates) > 0
-            if rename:
-                Log.debug("Found duplicate entities {}".format(",".join([n for n in duplicates])))
-                orig_name = name
-                name = "{0}_{1}".format(name, len(duplicates))
-                Log.debug("Renaming {0} to {1}".format(orig_name, name))
+            # child_entities = parent.component.get_child_entities()
+            # names = [e.URI().last().path() for e in child_entities if e]
+            # duplicates = [e for e in names if e.startswith(name)]
+            
+            # existing_path = ZST.ZstURI("{}/{}".format(parent.URI().path(), name))
+            # rename = True if client().find_entity(existing_path) else False
+            # if rename:
+            #     Log.debug("Found duplicate entities {}".format(",".join([n for n in duplicates])))
+            #     orig_name = name
+            #     name = "{0}_{1}".format(name, len(duplicates))
+            #     Log.debug("Renaming {0} to {1}".format(orig_name, name))
 
-            wrapper = wrappertype(name, handle, index).__disown__()
-            if rename:
-                wrapper.defer_action(wrapper.set_handle_name, name)
+            wrapper = wrappertype(name, handle, index)#.__disown__()
+            # if rename:
+            #     wrapper.defer_action(wrapper.set_handle_name, name)
+            parent.add_child(wrapper.component)
 
-            parent.add_child(wrapper)
-
-            Log.debug("Adding {}".format(wrapper.URI().path()))
+            # Log.debug("Adding {}".format(wrapper.URI().path()))
 
             # Save memory ID so we can match this wrapper to the handle in the future
-            LiveWrapper._wrapper_ptrs[wrapper.URI().path()] = handle._live_ptr
+            LiveWrapper._wrapper_ptrs[wrapper.component.URI().path()] = handle._live_ptr
 
             #Save reverse index
             LiveWrapper._ptr_wrappers[handle._live_ptr] = wrapper
@@ -184,14 +201,18 @@ class LiveWrapper(ZstContainer):
     def find_entities_missing_handles(wrappertype, livevector, parent):
         live_ptrs = [handle._live_ptr for handle in livevector]
         missing = []
-
-        for entity in parent.children():
-            try:
-                live_ptr =  LiveWrapper.find_live_ptr_from_wrapper(entity)
-                if not live_ptr in live_ptrs:
-                    missing.append(entity)
-            except KeyError:
-                Log.warn("Couldn't find live ptr for entity {0}".format(entity.URI().path()))
+        child_entities = None
+        try:
+            child_entities = parent.get_child_entities()
+            for entity in child_entities:
+                try:
+                    live_ptr =  LiveWrapper.find_live_ptr_from_wrapper(entity)
+                    if not live_ptr in live_ptrs:
+                        missing.append(entity)
+                except KeyError:
+                    Log.warn("Couldn't find live ptr for entity {0}".format(entity.URI().path()))
+        except AttributeError, e:
+            Log.write("find_entities_missing_handles: AttributeError for {}. {}".format(parent, e))
 
         return missing
 
