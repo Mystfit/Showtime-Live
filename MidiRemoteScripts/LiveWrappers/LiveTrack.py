@@ -53,6 +53,8 @@ class LiveTrack(LiveWrapper):
                 self.handle().add_clip_slots_listener(self.refresh_clipslots)
             except Exception as e:
                 pass
+        else:
+            print("No handle found for {}".format(self))
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
