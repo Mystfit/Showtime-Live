@@ -28,7 +28,7 @@ class ShowtimeBridge(ControlSurface):
 
             if showtime.NATIVE:
                 self.client.init("LiveBridge", True)
-                self.client.autojoin_by_name("stage")
+                self.client.auto_join_by_name("stage")
 
             # Root song object for the current set
             self.song = LiveSong("song", LiveUtils.getSong())
@@ -61,4 +61,4 @@ class ShowtimeBridge(ControlSurface):
         if showtime.NATIVE:
             self.client.poll_once()
         else:
-            showtime.poll()
+            showtime.poll_all()

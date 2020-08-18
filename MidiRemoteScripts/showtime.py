@@ -37,10 +37,18 @@ def client():
     return _ZST_client
 
 def log_memory():
+    global _connection
     _connection.root.log_memory()
 
 # def test_adaptor():
 #     return _connection.root.test_adaptor_cls()()
 
 def poll():
-    _connection.poll()
+    global _connection
+    _connection.poll_all()
+
+def teleport(func):
+    global _connection
+    from rpyc.utils.classic import teleport_function
+    #return rpyc.utils.classic.teleport_function(_connection, func, [])
+    return func

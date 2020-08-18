@@ -1,6 +1,7 @@
 import re
 from ..Logger import Log
 
+from .. import showtime
 from ..showtime import *
 from ..showtime import API as ZST
 
@@ -29,6 +30,9 @@ class LiveWrapper(object):
         # Create Showtime component
         self.component = ZST.ZstComponent(str(name))
         self.component.entity_events().entity_registered.add(self.on_registered)
+        
+        self._compute_imp = self.compute if NATIVE else showtime.teleport(self.compute)
+        self.component.entity_events().compute.add(self._compute_imp)
 
         # Register Live listeners
         self.create_listeners()
@@ -45,6 +49,7 @@ class LiveWrapper(object):
 
     def __del__(self):
         self.component.entity_events().entity_registered.remove(self.on_registered)
+        self.component.entity_events().compute.remove(self._compute_imp)
 
         ZST.ZstComponent.__del__(self)
         self.destroy_listeners()

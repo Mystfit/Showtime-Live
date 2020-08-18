@@ -24,7 +24,7 @@ class LiveDeviceParameter(LiveWrapper):
 
     def create_plugs(self):
         self.value_plug_out = ZST.ZstOutputPlug("out", ZST.ZstValueType_FloatList)
-        self.value_plug_in = ZST.ZstOutputPlug("in", ZST.ZstValueType_FloatList)
+        self.value_plug_in = ZST.ZstInputPlug("in", ZST.ZstValueType_FloatList)
         self.component.add_child(self.value_plug_out)
         self.component.add_child(self.value_plug_in)
 

@@ -56,7 +56,7 @@ class EventLoop(threading.Thread):
     def run(self):
         while self.is_running:
             self.client.poll_once()
-            time.sleep(1)
+            time.sleep(0.001)
 
 
 # UI
@@ -353,6 +353,7 @@ class ShowtimeLiveBridgeClient:
             service, 
             port=DEFAULT_SERVER_PORT, 
             protocol_config={
+            'allow_pickle': True,
             'allow_all_attrs': True,
             "allow_setattr": True,
             "allow_delattr": True,

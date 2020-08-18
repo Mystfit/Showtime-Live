@@ -25,7 +25,7 @@ class TestConnectionAdaptor(ZST.ZstConnectionAdaptor):
         self.cb(client, server)
 
 
-class LiveZSTService(rpyc.Service):
+class LiveZSTService(rpyc.SlaveService):
     def __init__(self, client):
         self.zst_client = client
 

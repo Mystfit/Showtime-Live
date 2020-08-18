@@ -81,17 +81,17 @@ class LiveClip(LiveWrapper):
 
     def compute(self, plug):
         if plug == self.clip_trigger_plug:
-            self.recv_trigger()
+            self.recv_trigger(plug)
         elif plug == self.clip_notes_set_plug:
-            self.recv_notes()
+            self.recv_notes(plug)
         elif plug == self.clip_broadcast_playing_pos_plug:
-            self.recv_broadcast_playing_pos()
+            self.recv_broadcast_playing_pos(plug)
 
-    def recv_trigger(self):
+    def recv_trigger(self, plug):
         Log.info("LIVE: Clip received trigger message")
         self.handle().fire()
 
-    def recv_notes(self):
+    def recv_notes(self, plug):
         Log.info("LIVE: Clip received notes set message")
         notes = []
         winding = 3
@@ -104,7 +104,7 @@ class LiveClip(LiveWrapper):
 
         self.handle().set_notes(notes)
 
-    def recv_broadcast_playing_pos(self):
+    def recv_broadcast_playing_pos(self, plug):
         Log.info("LIVE: Clip received set broadcast position message")
         self.wrapper.usePlayingPos = bool(plug.int_at(0))
 
