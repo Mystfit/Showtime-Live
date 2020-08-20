@@ -9,7 +9,7 @@ import showtime
 from showtime import API as ZST
 
 from LiveWrappers.LiveSong import LiveSong
-
+from LiveWrappers.LiveWrapper import LiveWrapper
 
 class ShowtimeBridge(ControlSurface):
     def __init__(self, c_instance):
@@ -22,13 +22,13 @@ class ShowtimeBridge(ControlSurface):
             Log.write("-----------------------")
             Log.write("Showtime-Live starting")
 
-            self.client = ZST.ShowtimeClient() if showtime.NATIVE else showtime.client()
+            self.client = showtime.client()
             self.client.connection_events().connected_to_server.add(self.on_connected)
             self.client.connection_events().disconnected_from_server.add(self.on_disconnected)
 
             if showtime.NATIVE:
                 self.client.init("LiveBridge", True)
-                self.client.auto_join_by_name("stage")
+                self.client.auto_join_by_name("Live")
 
             # Root song object for the current set
             self.song = LiveSong("song", LiveUtils.getSong())
@@ -58,7 +58,8 @@ class ShowtimeBridge(ControlSurface):
 
     def request_loop(self):
         # Handle incoming Showtime events
-        if showtime.NATIVE:
-            self.client.poll_once()
-        else:
-            showtime.poll_all()
+        showtime.poll()
+        Log.write("Start of deferred request loop")
+        LiveWrapper.process_deferred_actions()
+        Log.write("End of request loop")
+

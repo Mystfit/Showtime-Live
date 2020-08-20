@@ -31,7 +31,7 @@ class LiveWrapper(object):
         self.component = ZST.ZstComponent(str(name))
         self.component.entity_events().entity_registered.add(self.on_registered)
         
-        self._compute_imp = self.compute if NATIVE else showtime.teleport(self.compute)
+        self._compute_imp = self.compute if NATIVE else self.compute
         self.component.entity_events().compute.add(self._compute_imp)
 
         # Register Live listeners

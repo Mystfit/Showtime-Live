@@ -18,7 +18,8 @@ from rpyc.utils.classic import DEFAULT_SERVER_PORT, DEFAULT_SERVER_SSL_PORT
 import scriptinstaller
 import showtime.showtime as ZST
 
-DEFAULT_CLIENT_NAME = "LiveBridge"
+DEFAULT_CLIENT_NAME = "Live"
+DEFAULT_SERVER_NAME = "LiveBridgeServer"
 
 class ConnectionCallbacks(ZST.ZstConnectionAdaptor):
     def __init__(self, client_gui):
@@ -87,41 +88,53 @@ class Display(Frame):
         self.customPathInstallScriptsBtn = Button(self, text="Install Live scripts to custom location", command=self.open_custom_install_dialog)
         self.customPathInstallScriptsBtn.grid(row=2, column=1, sticky=(N, E, W), padx=2, pady=2)
 
+        # Host server button
+        Label(self, text="Host server").grid(row=3, column=0, sticky=E, padx=2, pady=4)
+        self.hostServerVar = IntVar(self)
+        self.hostServerVar.set(0)
+        self.hostServerBtn = Checkbutton(self, variable=self.hostServerVar, onvalue=1, offvalue=0, command=self.host_btn_pressed)
+        self.hostServerBtn.grid(row=3, column=1, sticky=W, padx=2, pady=2)
+
+        Label(self, text="Hosted server name").grid(row=4, column=0, sticky=E, padx=2, pady=2)
+        self.hostedServerNameVar = StringVar(self, DEFAULT_SERVER_NAME)
+        self.hostedServerNameEntry = Entry(self, textvariable=self.hostedServerNameVar)
+        self.hostedServerNameEntry.grid(row=4, column=1, sticky=(N, E, W), padx=2, pady=2)
+
         # Server list
-        Label(self, text="Discovered servers").grid(row=3, column=0, sticky=E, padx=2, pady=2)
+        Label(self, text="Discovered servers").grid(row=5, column=0, sticky=E, padx=2, pady=2)
         self.serverListVar = StringVar(self)
-        self.serverListVar.set("No servers found") 
-        self.serverList = Listbox(self, selectmode=SINGLE, height=4, listvariable="a b c")
-        self.serverList.grid(row=3, column=1, sticky=(E, W), padx=2, pady=2)
+        self.serverListVar.set("No servers found")
+        self.serverList = Listbox(self, selectmode=SINGLE, height=3, listvariable="a b c")
+        self.serverList.grid(row=5, column=1, sticky=(E, W), padx=2, pady=2)
         self.serverList.bind('<<ListboxSelect>>', self.click_serverlist)
 
         # Server address
-        Label(self, text="Server address").grid(row=4, column=0, sticky=E, padx=2, pady=2)
+        Label(self, text="Server address").grid(row=6, column=0, sticky=E, padx=2, pady=2)
         self.serverAddressVar = StringVar(self)
         self.serverAddressEntry = Entry(self, textvariable=self.serverAddressVar)
-        self.serverAddressEntry.grid(sticky=(N, E, W), row=4, column=1, padx=2, pady=2)
+        self.serverAddressEntry.grid(sticky=(N, E, W), row=6, column=1, padx=2, pady=2)
         
         # Client options
-        Label(self, text="Client name").grid(row=5, column=0, sticky=E, padx=2, pady=2)
+        Label(self, text="Client name").grid(row=7, column=0, sticky=E, padx=2, pady=2)
         self.clientNameVar = StringVar(self, DEFAULT_CLIENT_NAME)
         self.clientNameEntry = Entry(self, textvariable=self.clientNameVar)
-        self.clientNameEntry.grid(row=5, column=1, sticky=(N, E, W), padx=2, pady=2)
+        self.clientNameEntry.grid(row=7, column=1, sticky=(N, E, W), padx=2, pady=2)
 
         # Connection button
         self.connectBtn = Button(self, text='Connect', command=self.connectBtn_pressed)
-        self.connectBtn.grid(row=6, column=1, sticky=(N, E, W), pady=4)
+        self.connectBtn.grid(row=8, column=1, sticky=(N, E, W), pady=4)
 
         # Disconnection button
         self.disconnectBtn = Button(self, text='Disconnect', command=self.disconnectBtn_pressed)
-        self.disconnectBtn.grid(row=7, column=1, sticky=(N, E, W), pady=4)
+        self.disconnectBtn.grid(row=9, column=1, sticky=(N, E, W), pady=4)
 
         # Server log
         self.output = Text(self)
-        self.output.grid(row=8, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
+        self.output.grid(row=10, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
         self.consoleQueue = Queue.Queue()
 
         scrollbar = Scrollbar(self)
-        scrollbar.grid(row=8, column=1, rowspan=5, sticky=(N, E, S), pady=2)
+        scrollbar.grid(row=10, column=1, rowspan=5, sticky=(N, E, S), pady=2)
         self.output.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.output.yview)
  
@@ -131,6 +144,18 @@ class Display(Frame):
 
     def register_client(self, client):
         self.client = client
+
+    def register_server_creator_func(self, func):
+        self.create_server = func
+
+    def register_server_destructor_func(self, func):
+        self.destroy_server = func
+
+    def host_btn_pressed(self):
+        if self.hostServerVar.get():
+            self.create_server(self.hostedServerNameVar.get())
+        else:
+            self.destroy_server()
 
     def connectBtn_pressed(self):
         if self.serverAddressVar.get():
@@ -289,6 +314,8 @@ class ShowtimeLiveBridgeClient:
         self.create_client()
         self.create_bridge()
         self.gui.register_client(self.client)
+        self.gui.register_server_creator_func(self.create_server)
+        self.gui.register_server_destructor_func(self.destroy_server)
 
         # Check if midi remote scripts are installed correctly
         live_resource_dirs = scriptinstaller.find_ableton_resource_dirs()
@@ -334,6 +361,8 @@ class ShowtimeLiveBridgeClient:
 
         self.client_loop.stop()
         self.client.destroy()
+        if self.server:
+            self.server.destroy()
 
     def create_client(self):
         self.client = ZST.ShowtimeClient()
@@ -347,13 +376,21 @@ class ShowtimeLiveBridgeClient:
         self.root = Tk()
         self.gui = Display(self.root)
 
+    def create_server(self, name):
+        self.server = ZST.ShowtimeServer()
+        self.server.init(name)
+
+    def destroy_server(self):
+        self.server.destroy()
+        self.server = None
+
     def create_bridge(self):
         service = classpartial(LiveZSTService, self.client)
         self.bridge = ThreadedServer(
             service, 
             port=DEFAULT_SERVER_PORT, 
             protocol_config={
-            'allow_pickle': True,
+            #'allow_pickle': True,
             'allow_all_attrs': True,
             "allow_setattr": True,
             "allow_delattr": True,

@@ -44,12 +44,13 @@ class LiveDeviceParameter(LiveWrapper):
         self.value_plug_in = None
 
     def compute(self, plug):
-        Log.info("LIVE: Plug received message")
-        self.apply_param_value(plug.float_at(0))
+        # LiveWrapper.compute(self, plug)
+        # Log.info("LIVE: Plug received message")
+        self.defer_action(self.apply_param_value, plug.float_at(0))
 
     def apply_param_value(self, value):
         self.handle().value = Utils.clamp(self.handle().min, self.handle().max, float(value))
-        Log.info("Val:{0} Plug:{1}".format(self.handle().value, self.component.URI().path()))
+        # Log.info("Val:{0} Plug:{1}".format(self.handle().value, self.component.URI().path()))
 
     def value_updated(self):
         Log.info("Sending on {0}: {1}".format(self.component.URI().path(), self.handle().value))
