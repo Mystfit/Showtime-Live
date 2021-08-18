@@ -22,8 +22,8 @@
 try:
     import Live
     from _Framework.Debug import debug_print
-except ImportError, e:
-    from Logger import Log
+except ImportError as e:
+    from .Logger import Log
     Log.warn("Live library not available!")
 
 def getSong():
@@ -53,7 +53,7 @@ def scrubBy(time):
 
 def play():
     """Starts Ableton Playing"""
-    print "playing"
+    print("playing")
     getSong().start_playing()
 
 
@@ -299,6 +299,6 @@ def debug_log(self, *message):
     if debug_print != None:
         debug_print(console_message)
     else:
-        print console_message
+        print(console_message)
     if self._c_instance:
         self._c_instance.log_message(message)

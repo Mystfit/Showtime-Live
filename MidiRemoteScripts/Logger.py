@@ -1,8 +1,7 @@
 try:
     import Showtime_Live.Midi_Remote_Scripts.ShowtimeBridge.Utils as Utils
 except ImportError:
-    import Utils
-
+    from ShowtimeLive.Utils import Utils
 
 class Log:
     def __init__(self):
@@ -14,7 +13,7 @@ class Log:
     LOG_DEBUG = -1
 
     titles = {
-        LOG_INFO: "Infomation",
+        LOG_INFO: "Information",
         LOG_WARN: "Warnings",
         LOG_ERRORS: "Errors",
         LOG_DEBUG: "Debug"

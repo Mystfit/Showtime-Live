@@ -1,9 +1,11 @@
-from LiveClipslot import LiveClipslot
-from LiveClip import LiveClip
-from LiveDevice import LiveDevice
-from LiveWrapper import *
-from ..Utils import Utils
-from ..showtime import API as ZST
+from ShowtimeLive.LiveWrappers.LiveClipslot import LiveClipslot
+from ShowtimeLive.LiveWrappers.LiveDevice import LiveDevice
+from ShowtimeLive.LiveWrappers.LiveChain import LiveChain
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+from ShowtimeLive.Logger import Log
+from ShowtimeLive.Utils import Utils
+from ShowtimeLive.showtime import API as ZST
+import ShowtimeLive.showtime as showtime
 
 
 class LiveTrack(LiveWrapper):
@@ -16,14 +18,16 @@ class LiveTrack(LiveWrapper):
     # NOTE_OFF = "off"
 
     def __init__(self, name, handle, handleindex):
+        LiveWrapper.__init__(self, name, handle, handleindex)
         self.lastplaypos = None
         self.playingnotes = set()
-        LiveWrapper.__init__(self, name, handle, handleindex)
+        self.devices = ZST.ZstComponent("devices")
+        self.clipslots = ZST.ZstComponent("clipslots")
+        showtime.client().register_entity(self.devices)
+        showtime.client().register_entity(self.clipslots)
 
     def on_registered(self, entity):
         LiveWrapper.on_registered(self, entity)
-        self.devices = ZST.ZstComponent("devices")
-        self.clipslots = ZST.ZstComponent("clipslots")
         self.component.add_child(self.devices)
         self.component.add_child(self.clipslots)
 
@@ -43,18 +47,20 @@ class LiveTrack(LiveWrapper):
         LiveWrapper.create_listeners(self)
         if self.handle():
             try:
+                Log.write("Registering device listeners for {0}".format(self.handle().name))
                 self.handle().add_devices_listener(self.refresh_devices)
             except Exception as e:
-                Log.error("Failed to create track listeners: {0}".format(e))
+                Log.error("Failed to create track listeners for {0}: {1}".format(self.handle().name, e))
 
             try:
+                Log.write("Registering clipslot listeners for {0}".format(self.handle().name))
                 self.handle().add_fired_slot_index_listener(self.clip_status_fired)
                 self.handle().add_playing_slot_index_listener(self.clip_status_playing)
                 self.handle().add_clip_slots_listener(self.refresh_clipslots)
             except Exception as e:
                 pass
         else:
-            print("No handle found for {}".format(self))
+            Log.warn("No handle found for track")
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)
@@ -108,11 +114,13 @@ class LiveTrack(LiveWrapper):
     # ---------
     def refresh_devices(self, postactivate=True):
         Log.write("{0} - Device list changed".format(self.component.URI().last().path()))
-        LiveWrapper.update_hierarchy(self.devices, LiveDevice, self.handle().devices, postactivate)
+        if hasattr(self.handle(), "devices"):
+            LiveWrapper.update_hierarchy(self.devices, LiveDevice, self.handle().devices, postactivate)
 
     def refresh_clipslots(self, postactivate=True):
         Log.write("{0} - Clip slots changed".format(self.component.URI().last().path()))
-        LiveWrapper.update_hierarchy(self.clipslots, LiveClipslot, self.handle().clip_slots, postactivate)
+        if hasattr(self.handle(), "clip_slots"):
+            LiveWrapper.update_hierarchy(self.clipslots, LiveClipslot, self.handle().clip_slots, postactivate)
 
     def refresh_hierarchy(self, postactivate):
         self.refresh_devices(postactivate)

@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{14a08bfc-13ba-4680-af34-55c30f40c9db}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>Showtime_Live\ShowtimeLiveServer.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>Global|PythonCore|2.7</InterpreterId>
+    <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="external_libs\Pyro4\configuration.py" />
+    <Compile Include="external_libs\Pyro4\constants.py" />
+    <Compile Include="external_libs\Pyro4\core.py" />
+    <Compile Include="external_libs\Pyro4\errors.py" />
+    <Compile Include="external_libs\Pyro4\futures.py" />
+    <Compile Include="external_libs\Pyro4\message.py" />
+    <Compile Include="external_libs\Pyro4\naming.py" />
+    <Compile Include="external_libs\Pyro4\naming_storage.py" />
+    <Compile Include="external_libs\Pyro4\nsc.py" />
+    <Compile Include="external_libs\Pyro4\socketserver\existingconnectionserver.py" />
+    <Compile Include="external_libs\Pyro4\socketserver\multiplexserver.py" />
+    <Compile Include="external_libs\Pyro4\socketserver\threadpool.py" />
+    <Compile Include="external_libs\Pyro4\socketserver\threadpoolserver.py" />
+    <Compile Include="external_libs\Pyro4\socketserver\__init__.py" />
+    <Compile Include="external_libs\Pyro4\socketutil.py" />
+    <Compile Include="external_libs\Pyro4\test\echoserver.py" />
+    <Compile Include="external_libs\Pyro4\test\__init__.py" />
+    <Compile Include="external_libs\Pyro4\util.py" />
+    <Compile Include="external_libs\Pyro4\utils\flame.py" />
+    <Compile Include="external_libs\Pyro4\utils\flameserver.py" />
+    <Compile Include="external_libs\Pyro4\utils\httpgateway.py" />
+    <Compile Include="external_libs\Pyro4\utils\__init__.py" />
+    <Compile Include="external_libs\Pyro4\__init__.py" />
+    <Compile Include="external_libs\selectors34.py" />
+    <Compile Include="external_libs\serpent.py" />
+    <Compile Include="external_libs\six.py" />
+    <Compile Include="MidiRemoteScripts\LiveUtils.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveBrowser.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveChain.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveClip.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveClipslot.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveDevice.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveDeviceParameter.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveMixer.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveSong.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveTrack.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\LiveWrapper.py" />
+    <Compile Include="MidiRemoteScripts\LiveWrappers\__init__.py" />
+    <Compile Include="MidiRemoteScripts\Logger.py" />
+    <Compile Include="MidiRemoteScripts\ShowtimeBridge.py" />
+    <Compile Include="MidiRemoteScripts\Utils.py" />
+    <Compile Include="MidiRemoteScripts\__init__.py" />
+    <Compile Include="scripts\MidiPerformer.py" />
+    <Compile Include="scripts\Minilogue.py" />
+    <Compile Include="scripts\minilouge_tester.py" />
+    <Compile Include="scripts\ShowtimeLiveServer.py" />
+    <Compile Include="setup.py" />
+    <Compile Include="Showtime_Live\MidiScreamer.py" />
+    <Compile Include="Showtime_Live\ShowtimeLiveServer.py" />
+    <Compile Include="tests\ableton_live_test.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="external_libs\Pyro4-4.79.dist-info\entry_points.txt" />
+    <Content Include="external_libs\Pyro4-4.79.dist-info\top_level.txt" />
+    <Content Include="external_libs\selectors34-1.2.dist-info\top_level.txt" />
+    <Content Include="external_libs\serpent-1.28.dist-info\top_level.txt" />
+    <Content Include="external_libs\six-1.14.0.dist-info\top_level.txt" />
+    <Content Include="ShowtimeLive.egg-info\dependency_links.txt" />
+    <Content Include="ShowtimeLive.egg-info\requires.txt" />
+    <Content Include="ShowtimeLive.egg-info\SOURCES.txt" />
+    <Content Include="ShowtimeLive.egg-info\top_level.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="external_libs" />
+    <Folder Include="external_libs\Pyro4" />
+    <Folder Include="external_libs\Pyro4-4.79.dist-info" />
+    <Folder Include="external_libs\Pyro4\socketserver" />
+    <Folder Include="external_libs\Pyro4\test" />
+    <Folder Include="external_libs\Pyro4\utils" />
+    <Folder Include="external_libs\selectors34-1.2.dist-info" />
+    <Folder Include="external_libs\serpent-1.28.dist-info" />
+    <Folder Include="external_libs\six-1.14.0.dist-info" />
+    <Folder Include="MidiRemoteScripts" />
+    <Folder Include="MidiRemoteScripts\LiveWrappers" />
+    <Folder Include="scripts" />
+    <Folder Include="ShowtimeLive.egg-info" />
+    <Folder Include="Showtime_Live" />
+    <Folder Include="tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|2.7" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

@@ -1,13 +1,22 @@
 #!python
-import Queue
+try:
+    import queue as Queue
+except ImportError:
+    import Queue as Queue
+
 import os
 import time
 import threading
+import atexit
 from optparse import OptionParser
 
-import tkFileDialog
-import tkSimpleDialog
-from Tkinter import *
+
+try:
+    from tkinter import *
+except ImportError:
+    from Tkinter import *
+    import tkSimpleDialog as simpledialog
+    import tkFileDialog as filedialog
 
 from services import LiveZSTService
 from services import RPCLoop
@@ -17,6 +26,7 @@ from rpyc.utils.classic import DEFAULT_SERVER_PORT, DEFAULT_SERVER_SSL_PORT
 
 import scriptinstaller
 import showtime.showtime as ZST
+
 
 DEFAULT_CLIENT_NAME = "Live"
 DEFAULT_SERVER_NAME = "LiveBridgeServer"
@@ -235,9 +245,9 @@ class Display(Frame):
         self.after(50, self.write_log)
 
 
-class LiveScriptInstallDialog(tkSimpleDialog.Dialog):
+class LiveScriptInstallDialog(filedialog.Dialog):
     def __init__(self, parent):
-        tkSimpleDialog.Dialog.__init__(self, parent)
+        simpledialog.Dialog.__init__(self, parent)
         self.entry = None
         self.browseBtn = None
 
@@ -264,7 +274,7 @@ class LiveScriptInstallDialog(tkSimpleDialog.Dialog):
             'parent': self,
             'title': 'Ableton Live Directory'
         }
-        dirname = tkFileDialog.askdirectory(**options)
+        dirname = tkinter.tkFileDialog.askdirectory(**options)
         if dirname:
             self.set_directory(dirname)
 
@@ -306,6 +316,8 @@ class ShowtimeLiveBridgeClient:
                           default=None)
         (options, args) = parser.parse_args()
 
+        self.useCLI = options.useCLI
+
         # Create GUI
         if not options.useCLI:
             self.create_gui()
@@ -344,9 +356,13 @@ class ShowtimeLiveBridgeClient:
             print("Some local Ableton Live installations do not have the Showtime-Live Midi Remote Scripts installed.")
             print("Either click the \"Install Scripts\" button or restart with the command line flag --install.")
 
+    def __del__(self):
+        self.stop()
+
+    def start(self):
         # Enter into the idle loop to handle messages
         try:
-            if not options.useCLI:
+            if not self.useCLI:
                 self.gui.after(50, self.gui.write_log)
                 self.gui.mainloop()
             else:
@@ -355,7 +371,7 @@ class ShowtimeLiveBridgeClient:
         except KeyboardInterrupt:
             print("\nExiting...")
 
-    def __del__(self):
+    def stop(self):
         if(hasattr(self, "server")):
             self.server.destroy()
 
@@ -402,8 +418,9 @@ class ShowtimeLiveBridgeClient:
 
 
 def main():
-    ShowtimeLiveBridgeClient()
-
+    client = ShowtimeLiveBridgeClient()
+    atexit.register(client.stop)
+    client.start()
 
 if __name__ == "__main__":
     main()

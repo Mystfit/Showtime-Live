@@ -1,22 +1,22 @@
-from LiveWrapper import *
-from LiveDeviceParameter import LiveDeviceParameter
-import LiveChain
-from ..showtime import API as ZST
-
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+from ShowtimeLive.LiveWrappers.LiveDeviceParameter import LiveDeviceParameter
+from ShowtimeLive.Logger import Log
+from ShowtimeLive.showtime import API as ZST
+import ShowtimeLive.showtime as showtime
 
 class LiveDevice(LiveWrapper):
 
     def __init__(self, name, handle, handleindex):
         LiveWrapper.__init__(self, name, handle, handleindex)
         self.chains = None
+        if self.handle().can_have_chains:
+            self.chains = ZST.ZstComponent("chains")
+            showtime.client().register_entity(self.chains)
+
         
     def on_registered(self, entity):
         LiveWrapper.on_registered(self, entity)
-        self.parameters = ZST.ZstComponent("parameters")
-        self.component.add_child(self.parameters)
-
         if self.handle().can_have_chains:
-            self.chains = ZST.ZstComponent("chains")
             self.component.add_child(self.chains)
 
     @staticmethod
@@ -26,6 +26,7 @@ class LiveDevice(LiveWrapper):
     def create_listeners(self):
         LiveWrapper.create_listeners(self)
         if self.handle():
+            Log.info("Registering parameter listeners")
             self.handle().add_parameters_listener(self.refresh_parameters)
 
             if self.handle().can_have_chains:
@@ -53,7 +54,7 @@ class LiveDevice(LiveWrapper):
 
     def refresh_parameters(self, postactivate=True):
         Log.info("{0} - Parameter list changed".format(self.component.URI().last().path()))
-        LiveWrapper.update_hierarchy(self.parameters, LiveDeviceParameter, self.handle().parameters, postactivate)
+        LiveWrapper.update_hierarchy(self.component, LiveDeviceParameter, self.handle().parameters, postactivate)
 
     def refresh_chains(self, postactivate=True):
         Log.info("{0} - Chain list changed".format(self.component.URI().last().path()))
@@ -64,3 +65,8 @@ class LiveDevice(LiveWrapper):
         if self.handle().can_have_chains:
             if hasattr(self.handle(), "chains"):
                 self.refresh_chains(postactivate)
+
+
+# Imported last to avoid circular import issues
+import ShowtimeLive.LiveWrappers.LiveChain
+from LiveChain import LiveChain

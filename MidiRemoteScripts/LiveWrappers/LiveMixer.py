@@ -1,4 +1,6 @@
-from LiveWrapper import *
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+from ShowtimeLive.Logger import Log
+
 
 # TODO: Update mixer
 class LiveMixer(LiveWrapper):

@@ -1,5 +1,6 @@
-from LiveClip import LiveClip
-from LiveWrapper import *
+from ShowtimeLive.LiveWrappers.LiveClip import LiveClip
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+from ShowtimeLive.Logger import Log
 
 
 class LiveClipslot(LiveWrapper):

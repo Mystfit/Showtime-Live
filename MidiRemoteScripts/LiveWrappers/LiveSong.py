@@ -1,17 +1,22 @@
 import itertools
 
-from LiveWrapper import *
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+import ShowtimeLive.LiveWrappers.LiveTrack
 from LiveTrack import LiveTrack
 
-from ..showtime import API as ZST
-from ..Utils import Utils
+from ShowtimeLive.showtime import API as ZST
+from ShowtimeLive.Utils import Utils
+from ShowtimeLive.Logger import Log
 
+import ShowtimeLive.showtime as showtime
 
 class LiveSong(LiveWrapper):
     def __init__(self, name, handle):
         LiveWrapper.__init__(self, name, handle, 0)
         self.returns = ZST.ZstComponent("returns")
         self.tracks = ZST.ZstComponent("tracks")
+        showtime.client().register_entity(self.returns)
+        showtime.client().register_entity(self.tracks)
         self.master = LiveTrack("master", self.handle().master_track, 0)
 
     def on_registered(self, entity):
@@ -35,6 +40,8 @@ class LiveSong(LiveWrapper):
             self.handle().add_current_song_time_listener(self.song_time_updated)
             self.handle().add_tracks_listener(self.refresh_tracks)
             self.handle().add_return_tracks_listener(self.refresh_returns)
+        else:
+            Log.write("No song handle")
 
     def destroy_listeners(self):
         LiveWrapper.destroy_listeners(self)

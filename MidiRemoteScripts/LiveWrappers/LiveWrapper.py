@@ -1,9 +1,7 @@
 import re
-from ..Logger import Log
-
-from .. import showtime
-from ..showtime import *
-from ..showtime import API as ZST
+from ShowtimeLive.Logger import Log
+from ShowtimeLive.showtime import *
+from ShowtimeLive.showtime import API as ZST
 
 
 class LiveWrapper(object):
@@ -61,6 +59,8 @@ class LiveWrapper(object):
                 self.handle().add_name_listener(self.id_updated)
             except (RuntimeError, AttributeError):
                 pass
+        else:
+            Log.warn("No handle found. Can't register listeners.")
 
     def destroy_listeners(self):
         """Destroy all listeners on this wrapper"""
@@ -139,7 +139,7 @@ class LiveWrapper(object):
         totalMissing += len(handles_without_wrappers)
 
         for index, handle in handles_without_wrappers:
-
+ 
             name = LiveWrapper.sanitize_name(wrappertype.build_name(handle, index))
 
             # TODO: Find existing entities and rename if our name is a duplicate - move to showtime
@@ -158,7 +158,7 @@ class LiveWrapper(object):
             wrapper = wrappertype(name, handle, index)#.__disown__()
             # if rename:
             #     wrapper.defer_action(wrapper.set_handle_name, name)
-            parent.add_child(wrapper.component)
+            parent.add_child(wrapper.component, postactivate)
 
             # Log.debug("Adding {}".format(wrapper.URI().path()))
 
@@ -174,7 +174,7 @@ class LiveWrapper(object):
             # If we're at the top of the refresh hierarchy, send the root entity
             if postactivate:
                 Log.info("Activating {}".format(wrapper.URI().path()))
-                ZST.activate_entity_async(wrapper)
+                showtime.client().activate_entity_async(wrapper)
 
             totalNew += 1
 
@@ -190,9 +190,9 @@ class LiveWrapper(object):
         for entity in removed_entities:
             Log.debug("Removing {}".format(entity.URI().path()))
             live_ptr = LiveWrapper.find_live_ptr_from_wrapper(entity)
+            showtime.client().deactivate_entity_async(entity)
             del LiveWrapper._ptr_wrappers[live_ptr]
             del LiveWrapper._wrapper_ptrs[entity.URI().path()]
-            ZST.deactivate_entity_async(entity)
             totalRemoved += 1
 
         # if totalRemoved:

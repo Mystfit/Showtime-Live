@@ -1,5 +1,5 @@
 import sys
-from Logger import Log
+from ShowtimeLive.Logger import Log
 
 NATIVE = False
 API = None
@@ -10,8 +10,8 @@ if not API:
     try:
         import showtime.showtime as API
         NATIVE = True
-    except ImportError:
-        Log.write("Couldn't load Showtime native library. Falling back to Showtime RPyC bridge")
+    except ImportError as err:
+        Log.write("Couldn't load Showtime native library. Attempting to use RPyC")
         try:
             import rpyc
             _connection = rpyc.connect(
@@ -19,9 +19,9 @@ if not API:
                 18812, 
                 config={"allow_all_attrs": True}
             )
-            Log.write = _connection.root.log_write
-            sys.stdout = _connection.root.log_write
-            sys.stderr = _connection.root.log_write
+            Log.set_logger(_connection.root.log_write)
+            # sys.stdout = _connection.root.log_write
+            # sys.stderr = _connection.root.log_write
             API = _connection.root.get_module()
             Log.write("Live connected to RPyC bridge")
         except ImportError as e:

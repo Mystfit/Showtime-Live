@@ -1,5 +1,5 @@
-from LiveWrapper import *
-from ..Logger import Log
+from ShowtimeLive.LiveWrapper import LiveWrapper
+from ShowtimeLive.Logger import Log
 
 
 class LiveBrowser(LiveWrapper):

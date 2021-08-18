@@ -1,14 +1,20 @@
-from LiveWrapper import *
-import LiveDevice
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+
+import ShowtimeLive.LiveWrappers.LiveDevice
+from LiveDevice import LiveDevice
+
+from ShowtimeLive.Logger import Log
+
 
 class LiveChain(LiveWrapper):
 
     def __init__(self, name, handle, handleindex):
         LiveWrapper.__init__(self, name, handle, handleindex)
+        self.devices = ZST.ZstComponent("devices")
+        showtime.client().register_entity(self.devices)
         
     def on_registered(self, entity):
         LiveWrapper.on_registered(self, entity)
-        self.devices = ZST.ZstComponent("devices")
         self.component.add_child(self.devices)
 
     @staticmethod

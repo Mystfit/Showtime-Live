@@ -1,7 +1,7 @@
-from LiveWrapper import *
-from ..Utils import Utils
-from ..Logger import Log
-from ..showtime import API as ZST
+from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
+from ShowtimeLive.Utils import Utils
+from ShowtimeLive.Logger import Log
+from ShowtimeLive.showtime import API as ZST
 
 
 class LiveDeviceParameter(LiveWrapper):

@@ -28,7 +28,7 @@ def install_midi_remote_scripts(install_paths=None):
     scriptspath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "MidiRemoteScripts")
 
     for path in install_paths:
-        installpath = os.path.join(path, "MIDI Remote Scripts", "Showtime")
+        installpath = os.path.join(path, "MIDI Remote Scripts", "ShowtimeLive")
 
         try:
             rmtree(installpath)
@@ -60,6 +60,7 @@ def install_package(package_name, install_paths):
         pass
 
         # Copy packages
+        print("Package path is {0}".format(package.__path__[0]))
         dest = os.path.join(live_site_packages, os.path.basename(package.__path__[0]))
         print("Installing package to {}".format(dest))
         try:
