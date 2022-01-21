@@ -1,7 +1,7 @@
 import re
 from ShowtimeLive.Logger import Log
-from ShowtimeLive.showtime import *
-from ShowtimeLive.showtime import API as ZST
+from ShowtimeLive.showtimeAPI import *
+from ShowtimeLive.showtimeAPI import API as ZST
 
 
 class LiveWrapper(object):
@@ -18,7 +18,7 @@ class LiveWrapper(object):
 
 
     # Total ID count
-    _id_counter = long(0)
+    _id_counter = 0
 
     # Constructor
     def __init__(self, name, handle, handle_index=None):
@@ -216,7 +216,7 @@ class LiveWrapper(object):
                         missing.append(entity)
                 except KeyError:
                     Log.warn("Couldn't find live ptr for entity {0}".format(entity.URI().path()))
-        except AttributeError, e:
+        except AttributeError as e:
             Log.write("find_entities_missing_handles: AttributeError for {}. {}".format(parent, e))
 
         return missing
@@ -233,7 +233,7 @@ class LiveWrapper(object):
             for callback, action in LiveWrapper._deferred_actions.iteritems():
                 try:
                     callback(action[1])
-                except Exception, e:
+                except Exception as e:
                     Log.error("Couldn't run deferred action. %s" % e)
             LiveWrapper._deferred_actions.clear()
 

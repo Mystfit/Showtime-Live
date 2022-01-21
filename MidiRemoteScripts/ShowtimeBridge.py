@@ -4,7 +4,7 @@ import ShowtimeLive.LiveUtils as LiveUtils
 from _Framework.ControlSurface import ControlSurface
 from _Framework.EncoderElement import *
 
-import ShowtimeLive.showtime as showtime
+import ShowtimeLive.showtimeAPI as showtime
 
 import ShowtimeLive.LiveWrappers.LiveSong
 from ShowtimeLive.LiveWrappers.LiveSong import LiveSong

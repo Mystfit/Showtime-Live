@@ -4,8 +4,8 @@ from ShowtimeLive.LiveWrappers.LiveChain import LiveChain
 from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
 from ShowtimeLive.Logger import Log
 from ShowtimeLive.Utils import Utils
-from ShowtimeLive.showtime import API as ZST
-import ShowtimeLive.showtime as showtime
+from ShowtimeLive.showtimeAPI import API as ZST
+import ShowtimeLive.showtimeAPI as showtime
 
 
 class LiveTrack(LiveWrapper):

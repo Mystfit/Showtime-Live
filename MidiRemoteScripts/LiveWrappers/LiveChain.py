@@ -1,13 +1,9 @@
 from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
-
-import ShowtimeLive.LiveWrappers.LiveDevice
-from LiveDevice import LiveDevice
-
+from ShowtimeLive.LiveWrappers import LiveDevice
 from ShowtimeLive.Logger import Log
 
 
 class LiveChain(LiveWrapper):
-
     def __init__(self, name, handle, handleindex):
         LiveWrapper.__init__(self, name, handle, handleindex)
         self.devices = ZST.ZstComponent("devices")

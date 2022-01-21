@@ -1,7 +1,7 @@
 from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
 from ShowtimeLive.Utils import Utils
 from ShowtimeLive.Logger import Log
-from ShowtimeLive.showtime import API as ZST
+from ShowtimeLive.showtimeAPI import API as ZST
 
 
 # Wrapper

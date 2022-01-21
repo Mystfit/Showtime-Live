@@ -81,3 +81,8 @@ def install_dependencies(install_paths=None):
     install_package("showtime", install_paths)
     install_package("rpyc", install_paths)
     install_package("plumbum", install_paths)
+
+
+if __name__ == "__main__":
+    install_dependencies()
+    install_midi_remote_scripts()

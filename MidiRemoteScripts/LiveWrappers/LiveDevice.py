@@ -1,8 +1,8 @@
 from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
 from ShowtimeLive.LiveWrappers.LiveDeviceParameter import LiveDeviceParameter
 from ShowtimeLive.Logger import Log
-from ShowtimeLive.showtime import API as ZST
-import ShowtimeLive.showtime as showtime
+from ShowtimeLive.showtimeAPI import API as ZST
+import ShowtimeLive.showtimeAPI as showtime
 
 class LiveDevice(LiveWrapper):
 
@@ -58,7 +58,7 @@ class LiveDevice(LiveWrapper):
 
     def refresh_chains(self, postactivate=True):
         Log.info("{0} - Chain list changed".format(self.component.URI().last().path()))
-        LiveWrapper.update_hierarchy(self.chains, LiveChain.LiveChain, self.handle().chains, postactivate)
+        LiveWrapper.update_hierarchy(self.chains, LiveChain, self.handle().chains, postactivate)
 
     def refresh_hierarchy(self, postactivate):
         self.refresh_parameters(postactivate)
@@ -68,5 +68,4 @@ class LiveDevice(LiveWrapper):
 
 
 # Imported last to avoid circular import issues
-import ShowtimeLive.LiveWrappers.LiveChain
-from LiveChain import LiveChain
+from ShowtimeLive.LiveWrappers.LiveChain import LiveChain

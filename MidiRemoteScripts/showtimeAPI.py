@@ -6,16 +6,22 @@ API = None
 _connection = None
 _ZST_client = None
 
+# Manual showtime import to test import errors
+# import showtime.showtime
+# raise Exception(dir(showtime.showtime))
+
+
 if not API:
     try:
-        import showtime.showtime as API
-        NATIVE = True
+        # import showtime.showtime as API
+        # NATIVE = True
+        raise ImportError("Skipping native Showtime")
     except ImportError as err:
         Log.write("Couldn't load Showtime native library. Attempting to use RPyC")
         try:
             import rpyc
             _connection = rpyc.connect(
-                "localhost", 
+                b"localhost", 
                 18812, 
                 config={"allow_all_attrs": True}
             )

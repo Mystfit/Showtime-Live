@@ -13,6 +13,8 @@ from optparse import OptionParser
 
 try:
     from tkinter import *
+    import tkinter.filedialog as filedialog
+    import tkinter.simpledialog as simpledialog
 except ImportError:
     from Tkinter import *
     import tkSimpleDialog as simpledialog
