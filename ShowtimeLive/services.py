@@ -2,7 +2,7 @@ import threading
 import rpyc
 from rpyc.core import SlaveService
 import showtime.showtime as ZST
-
+import defusedxml
 
 class RPCLoop(threading.Thread):
     def __init__(self, bridge):
@@ -26,8 +26,9 @@ class TestConnectionAdaptor(ZST.ZstConnectionAdaptor):
 
 
 class LiveZSTService(rpyc.SlaveService):
-    def __init__(self, client):
+    def __init__(self, client, server):
         self.zst_client = client
+        self.bridge_server = server
 
     def on_connect(self, conn):
         print("New connection")
@@ -46,3 +47,7 @@ class LiveZSTService(rpyc.SlaveService):
 
     def exposed_test_adaptor_cls(self):
         return TestConnectionAdaptor
+
+    def exposed_set_control_surface_callback(self, control_surface_accessor):
+        print("Registering control surface accessor: {}".format(control_surface_accessor))
+        self.bridge_server.live_control_surface = control_surface_accessor

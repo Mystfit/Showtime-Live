@@ -13,5 +13,5 @@ setup(
   description   = """Ableton Live bindings for Showtime""",
   url = "https://github.com/mystfit/Showtime-Live",
   packages = find_packages(),
-  install_requires = ['rpyc', 'showtimepython']
+  install_requires = ['rpyc', 'defusedxml', 'showtimepython']
 )

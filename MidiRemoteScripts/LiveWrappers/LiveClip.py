@@ -2,6 +2,7 @@ from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
 from ShowtimeLive.Utils import Utils
 from ShowtimeLive.Logger import Log
 from ShowtimeLive.showtimeAPI import API as ZST
+import xml.etree.ElementTree as ET
 
 
 # Wrapper
@@ -132,3 +133,9 @@ class LiveClip(LiveWrapper):
 
     def refresh_hierarchy(self, postactivate):
         pass
+
+    def toXMLElement(self):
+        return ET.Element("clip", 
+            {"time": str(self.handle().start_time), "duration": str(self.handle().length)},
+            {"content": ""}
+        )

@@ -24,7 +24,7 @@ class ShowtimeBridge(ControlSurface):
 
         # Showtime init
         Log.level = Log.LOG_DEBUG
-            
+        showtime.set_control_surface(self)
         # self.refresh_state()
         # self._suppress_send_midi = False
 

@@ -23,7 +23,7 @@ if not API:
             _connection = rpyc.connect(
                 b"localhost", 
                 18812, 
-                config={"allow_all_attrs": True}
+                config={"allow_all_attrs": True},
             )
             Log.set_logger(_connection.root.log_write)
             # sys.stdout = _connection.root.log_write
@@ -41,6 +41,9 @@ def client():
         else:
             _ZST_client = _connection.root.get_client()
     return _ZST_client
+
+def set_control_surface(control_surface):
+    _connection.root.set_control_surface_callback(lambda cs=control_surface: control_surface)
 
 def log_memory():
     _connection.root.log_memory()

@@ -1,13 +1,12 @@
 import itertools
-
+import Live
 from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
 from ShowtimeLive.LiveWrappers.LiveTrack import LiveTrack
-
 from ShowtimeLive.showtimeAPI import API as ZST
 from ShowtimeLive.Utils import Utils
 from ShowtimeLive.Logger import Log
-
 import ShowtimeLive.showtimeAPI as showtime
+import xml.etree.ElementTree as ET
 
 class LiveSong(LiveWrapper):
     def __init__(self, name, handle):
@@ -16,14 +15,12 @@ class LiveSong(LiveWrapper):
         self.tracks = ZST.ZstComponent("tracks")
         showtime.client().register_entity(self.returns)
         showtime.client().register_entity(self.tracks)
-        self.master = LiveTrack("master", self.handle().master_track, 0)
 
     def on_registered(self, entity):
         Log.write("Song registered")
         LiveWrapper.on_registered(self, entity)
         self.component.add_child(self.returns)
         self.component.add_child(self.tracks)
-        self.component.add_child(self.master.component)
 
 
     @staticmethod
@@ -82,6 +79,8 @@ class LiveSong(LiveWrapper):
         self.refresh_tracks(postactivate)
         self.refresh_returns(postactivate)
 
+        # Master track always exists and remember to register it
+        LiveWrapper.update_hierarchy(self.component, LiveTrack, [self.handle().master_track], postactivate)
 
     # ---------
     # Utilities
@@ -91,3 +90,31 @@ class LiveSong(LiveWrapper):
             track = LiveWrapper.find_wrapper_from_live_ptr(track_handle._live_ptr)
             if track:
                 track.tick()
+
+
+    def toXMLElement(self):
+        # Build top level nodes
+        project_node = ET.Element("project", {"version": "0.1"})
+        version = "{}.{}.{}".format(Live.Application.get_application().get_major_version(), Live.Application.get_application().get_minor_version(), Live.Application.get_application().get_bugfix_version())
+        application_node = ET.SubElement(project_node, "application", {"Ableton Live": version})
+        tracks_node = ET.SubElement(project_node, "tracks")
+        arrangement_node = ET.SubElement(project_node, 'arrangement', {"id": "arrangement"})
+        lanes_node = ET.SubElement(arrangement_node, 'lanes', {"timebase": "beats", "id": "lanes"})
+        scenes_node = ET.SubElement(project_node, "scenes")
+
+        # Serialize scenes
+        tracks = []
+        for t in self.handle().tracks:
+            tracks.append(t)
+        for r in self.handle().return_tracks:
+            tracks.append(r)
+        tracks.append(self.handle().master_track)
+
+        for track in tracks:
+            track_wrapper = LiveWrapper.find_wrapper_from_live_ptr(track._live_ptr)
+            track_node, lane_node = track_wrapper.toXMLElement() if track_wrapper else (None, None)
+            tracks_node.append(track_node)
+            lanes_node.append(lane_node)
+
+        return project_node
+        # return ET.Element("lanes", {"timebase": beats})

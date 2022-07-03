@@ -1,5 +1,5 @@
 from ShowtimeLive.LiveWrappers.LiveWrapper import LiveWrapper
-from ShowtimeLive.LiveWrappers import LiveDevice
+from ShowtimeLive.LiveWrappers.LiveDevice import LiveDevice
 from ShowtimeLive.Logger import Log
 
 

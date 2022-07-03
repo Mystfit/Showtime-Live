@@ -81,6 +81,7 @@ def install_dependencies(install_paths=None):
     install_package("showtime", install_paths)
     install_package("rpyc", install_paths)
     install_package("plumbum", install_paths)
+    install_package("defusedxml", install_paths)
 
 
 if __name__ == "__main__":

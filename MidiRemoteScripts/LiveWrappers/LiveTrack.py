@@ -6,7 +6,7 @@ from ShowtimeLive.Logger import Log
 from ShowtimeLive.Utils import Utils
 from ShowtimeLive.showtimeAPI import API as ZST
 import ShowtimeLive.showtimeAPI as showtime
-
+import xml.etree.ElementTree as ET
 
 class LiveTrack(LiveWrapper):
     # Message types
@@ -126,6 +126,9 @@ class LiveTrack(LiveWrapper):
         self.refresh_devices(postactivate)
         self.refresh_clipslots(postactivate)
 
+    def is_master_track(self):
+        return self.handle().canonical_parent.master_track is self.handle() if self.handle().canonical_parent else False
+
 
     # ---------
     # Utilities
@@ -176,3 +179,36 @@ class LiveTrack(LiveWrapper):
                     # self.update(LiveTrack.TRACK_PLAYING_NOTES, changednotes)
                     pass
 
+    def toXMLElement(self):
+        track_node = ET.Element("track", {
+            "id": self.handle().name,
+            "audioChannels": str(2),
+            "name": self.handle().name,
+            "mixerRole": "master" if self.is_master_track() else "regular",
+            "timelineRole": "notes" if self.handle().has_midi_input else "audio",
+        })
+        if not self.is_master_track():
+            track_node.set("destination", str(self.handle().current_output_routing))
+
+        devices_node = ET.SubElement(track_node, "devices") if len(self.handle().devices) else None
+        for device in self.handle().devices:
+            device_wrapper = LiveWrapper.find_wrapper_from_live_ptr(device._live_ptr)
+            # device_node = device_wrapper.toXMLElement() if device_wrapper else None
+            # if device_node:
+            #     devices_node.append(device_node)
+
+        # Lanes contain clips and live in an arrangement, so need to be built parallel to the track they reference
+        lanes_node = ET.Element("lanes", {
+            "track": self.handle().name,
+            "id": "{}_lane".format(self.handle().name)
+        })
+        clips_node = ET.SubElement(lanes_node, "clips", {"id": "{}_clips".format(self.handle().name)})
+        for clipslot in self.handle().clip_slots:
+            if clipslot.clip:
+                ET.SubElement(clips_node, "clip", {
+                    "time": "0.0",
+                    "duration": "1.0",
+                    "name": clipslot.clip.name
+                })
+
+        return (track_node, lanes_node)

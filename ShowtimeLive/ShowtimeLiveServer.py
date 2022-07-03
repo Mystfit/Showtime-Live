@@ -28,10 +28,12 @@ from rpyc.utils.classic import DEFAULT_SERVER_PORT, DEFAULT_SERVER_SSL_PORT
 
 import scriptinstaller
 import showtime.showtime as ZST
+import xml.etree.ElementTree as ET
 
 
 DEFAULT_CLIENT_NAME = "Live"
 DEFAULT_SERVER_NAME = "LiveBridgeServer"
+rpyc_client = None
 
 class ConnectionCallbacks(ZST.ZstConnectionAdaptor):
     def __init__(self, client_gui):
@@ -140,13 +142,17 @@ class Display(Frame):
         self.disconnectBtn = Button(self, text='Disconnect', command=self.disconnectBtn_pressed)
         self.disconnectBtn.grid(row=9, column=1, sticky=(N, E, W), pady=4)
 
+        # Dump set
+        self.dumpSetBtn = Button(self, text='Dump Live set', command=self.dumpLiveSetBtn_pressed)
+        self.dumpSetBtn.grid(row=10, column=1, sticky=(N, E, W), pady=4)
+
         # Server log
         self.output = Text(self)
-        self.output.grid(row=10, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
+        self.output.grid(row=11, column=0, columnspan=2, rowspan=5, padx=2, pady=2, sticky=(N, E, S, W))
         self.consoleQueue = Queue.Queue()
 
         scrollbar = Scrollbar(self)
-        scrollbar.grid(row=10, column=1, rowspan=5, sticky=(N, E, S), pady=2)
+        scrollbar.grid(row=11, column=1, rowspan=5, sticky=(N, E, S), pady=2)
         self.output.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.output.yview)
  
@@ -177,8 +183,12 @@ class Display(Frame):
             print("No server address specified.")
 
     def disconnectBtn_pressed(self):
-         self.client.leave()
+         self.client.dump_live_set()
          print("Disconnected from server")
+
+    def dumpLiveSetBtn_pressed(self):
+        song_xml = rpyc_client.live_control_surface().song.toXMLElement()
+        print(ET.tostring(song_xml))
 
     def install_scripts_pressed(self):
         scriptinstaller.install_midi_remote_scripts()
@@ -403,7 +413,7 @@ class ShowtimeLiveBridgeClient:
         self.server = None
 
     def create_bridge(self):
-        service = classpartial(LiveZSTService, self.client)
+        service = classpartial(LiveZSTService, self.client, self)
         self.bridge = ThreadedServer(
             service, 
             port=DEFAULT_SERVER_PORT, 
@@ -420,9 +430,10 @@ class ShowtimeLiveBridgeClient:
 
 
 def main():
-    client = ShowtimeLiveBridgeClient()
-    atexit.register(client.stop)
-    client.start()
+    global rpyc_client
+    rpyc_client = ShowtimeLiveBridgeClient()
+    atexit.register(rpyc_client.stop)
+    rpyc_client.start()
 
 if __name__ == "__main__":
     main()

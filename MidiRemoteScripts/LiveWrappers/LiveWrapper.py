@@ -1,6 +1,8 @@
 import re
+import xml.etree.ElementTree as ET
 from ShowtimeLive.Logger import Log
-from ShowtimeLive.showtimeAPI import *
+
+import ShowtimeLive.showtimeAPI as showtime
 from ShowtimeLive.showtimeAPI import API as ZST
 
 
@@ -29,7 +31,7 @@ class LiveWrapper(object):
         self.component = ZST.ZstComponent(str(name))
         self.component.entity_events().entity_registered.add(self.on_registered)
         
-        self._compute_imp = self.compute if NATIVE else self.compute
+        self._compute_imp = self.compute if showtime.NATIVE else self.compute
         self.component.entity_events().compute.add(self._compute_imp)
 
         # Register Live listeners
@@ -188,15 +190,23 @@ class LiveWrapper(object):
         removed_entities = LiveWrapper.find_entities_missing_handles(wrappertype, livevector, parent)
 
         for entity in removed_entities:
+            # Ignore whitelisted entities
+            name = entity.URI().last().path()
+            if name == "then" or name == "next":
+                continue
+
             Log.debug("Removing {}".format(entity.URI().path()))
             live_ptr = LiveWrapper.find_live_ptr_from_wrapper(entity)
             showtime.client().deactivate_entity_async(entity)
-            del LiveWrapper._ptr_wrappers[live_ptr]
-            del LiveWrapper._wrapper_ptrs[entity.URI().path()]
-            totalRemoved += 1
+            try:
+                del LiveWrapper._ptr_wrappers[live_ptr]
+                del LiveWrapper._wrapper_ptrs[entity.URI().path()]
+                totalRemoved += 1
+            except KeyError:
+                pass
 
-        # if totalRemoved:
-        #     Log.debug("Removed {1} instances of {0}.".format(wrappertype.__name__, totalRemoved))
+        if totalRemoved:
+            Log.debug("Removed {1} instances of {0}.".format(wrappertype.__name__, totalRemoved))
 
     @staticmethod
     def find_handles_missing_entities(wrappertype, livevector, parent):
@@ -239,3 +249,9 @@ class LiveWrapper(object):
 
     def defer_action(self, method, argument):
         LiveWrapper._deferred_actions[method] = (self, argument)
+
+
+    # DAWproject exporting
+    # --------------------
+    def toXMLElement(self):
+        raise NotImplementedError("Can't export this wrapper to XML. toXMLElement not defined")
